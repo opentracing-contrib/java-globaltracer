@@ -18,7 +18,7 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * The <code>GlobalTracer</code> class is not a {@link Tracer} implementation of itself, but instead a utility-class
- * to centrally reference the {@link #getInstance() singleton instance} of the configured {@link Tracer} implementation.
+ * to centrally reference the {@link #tracer() singleton instance} of the configured {@link Tracer} implementation.
  * <p>
  * The singleton instance can be instantiated in one of two ways:
  * <ol>
@@ -47,9 +47,20 @@ public class GlobalTracer {
      * The resolved {@link Tracer} to delegate the global tracing implementation to.<br>
      * This can be either an {@link #registerDelegate(Tracer) explicitly registered delegate} or an
      * {@link #DELEGATES automatically resolved Tracer implementation}.<br>
-     * Management of this reference is the responsibility of the {@link #getInstance()} method.
+     * Management of this reference is the responsibility of the {@link #tracer()} method.
      */
     private static final AtomicReference<Tracer> delegate = new AtomicReference<>();
+
+    /**
+     * This method allows explicit registration of a configured {@link Tracer} implementation to back the behaviour
+     * of the {@link #activeSpan() active global span} objects.
+     *
+     * @param delegate The delegate tracer to delegate the global tracing implementation to.
+     */
+    public static void registerDelegate(Tracer delegate) {
+        GlobalTracer.delegate.set(delegate != null ? new GlobalSpanTracer(delegate) : null);
+        LOGGER.log(Level.INFO, "Registered GlobalTracer delegate: {0}.", delegate);
+    }
 
     /**
      * This method returns the {@link #registerDelegate(Tracer) explicitly registered} Tracer implementation,
@@ -59,9 +70,9 @@ public class GlobalTracer {
      * If no delegate is found, the {@link io.opentracing.NoopTracer NoopTracer} will be returned and no
      * {@link #activeSpan() globally-active spans} will be created.
      *
-     * @return The global tracer to use.
+     * @return The non-<code>null</code> global tracer to use.
      */
-    public static Tracer getInstance() {
+    public static Tracer tracer() {
         Tracer instance = delegate.get();
         if (instance == null) {
             for (Tracer tracer : DELEGATES) {
@@ -85,31 +96,20 @@ public class GlobalTracer {
     }
 
     /**
-     * This method allows explicit registration of a configured {@link Tracer} implementation to back the behaviour
-     * of the {@link #activeSpan() active global span} objects.
-     *
-     * @param delegate The delegate tracer to delegate the global tracing implementation to.
-     */
-    public static void registerDelegate(Tracer delegate) {
-        GlobalTracer.delegate.set(delegate != null ? new GlobalSpanTracer(delegate) : null);
-        LOGGER.log(Level.INFO, "Registered GlobalTracer delegate: {0}.", delegate);
-    }
-
-    /**
      * Static method to return the currently active global {@link Span}.<br>
      * There is no guarantee that there is an active {@link Span} in all situations.
      *
      * @return The currently active global Span, or <code>empty</code> if there is no Span currently active.
      */
     public static Optional<Span> activeSpan() {
-        return GlobalSpan.activeContext().flatMap(Context::getValue);
+        return Optional.ofNullable(GlobalSpan.activeContext());
     }
 
     /**
      * Manager class that is able to get and set the globally active {@link Span} through the use of the common
      * {@link Context} concept.<br>
      * This manager is declared as ContextManager provider for global {@link Span spans} in the
-     * <code>"/META-INF/services/nl.talsmasoftware.concurrency.context.ContextManager.properties"</code> service file.
+     * <code>"/META-INF/services/nl.talsmasoftware.context.ContextManager"</code> service file.
      *
      * @author Sjoerd Talsma
      */
@@ -121,7 +121,7 @@ public class GlobalTracer {
 
         @Override
         public Optional<Context<Span>> getActiveContext() {
-            return GlobalSpan.activeContext();
+            return Optional.ofNullable(GlobalSpan.activeContext());
         }
     }
 

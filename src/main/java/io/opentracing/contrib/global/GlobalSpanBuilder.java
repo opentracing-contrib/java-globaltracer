@@ -43,6 +43,7 @@ class GlobalSpanBuilder implements Tracer.SpanBuilder {
 
     @Override
     public Span start() {
+        // TODO: Think about this condition; OpenTracing spec allows multiple parent spans, but would we want that here?
         if (!explicitParent.get()) {
             GlobalTracer.activeSpan().ifPresent(activeSpan -> delegate.asChildOf(activeSpan.context()));
         }

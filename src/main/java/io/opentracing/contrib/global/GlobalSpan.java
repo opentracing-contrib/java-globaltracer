@@ -36,8 +36,8 @@ class GlobalSpan extends AbstractThreadLocalContext<Span> implements Span {
      *
      * @return The currently active context or <code>null</code> if no context is active.
      */
-    static Optional<Context<Span>> activeContext() {
-        return Optional.ofNullable(ACTIVE.get());
+    static GlobalSpan activeContext() {
+        return ACTIVE.get();
     }
 
     /**
@@ -64,7 +64,7 @@ class GlobalSpan extends AbstractThreadLocalContext<Span> implements Span {
      */
     @Override
     public void finish() {
-        try {
+        if (!isClosed()) try {
             delegateOrNoop().finish();
         } finally {
             super.close();
@@ -81,7 +81,7 @@ class GlobalSpan extends AbstractThreadLocalContext<Span> implements Span {
      */
     @Override
     public void finish(long finishMicros) {
-        try {
+        if (!isClosed()) try {
             delegateOrNoop().finish(finishMicros);
         } finally {
             super.close();
@@ -97,7 +97,7 @@ class GlobalSpan extends AbstractThreadLocalContext<Span> implements Span {
      */
     @Override
     public void close() {
-        try {
+        if (!isClosed()) try {
             delegateOrNoop().close();
         } finally {
             super.close();
