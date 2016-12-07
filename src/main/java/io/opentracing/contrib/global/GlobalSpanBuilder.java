@@ -32,8 +32,8 @@ class GlobalSpanBuilder implements Tracer.SpanBuilder {
 
     @Override
     public Tracer.SpanBuilder asChildOf(SpanContext parent) {
-        final Optional<Span> activeSpan = GlobalTracer.activeSpan();
         if (parent == null || parent instanceof NoopSpanContext) {
+            final Optional<Span> activeSpan = GlobalTracer.activeSpan();
             return activeSpan.isPresent() ? this : NoopSpanBuilder.INSTANCE;
         }
         delegate.asChildOf(parent);
@@ -43,9 +43,9 @@ class GlobalSpanBuilder implements Tracer.SpanBuilder {
 
     @Override
     public Span start() {
-        final Optional<Span> activeSpan = GlobalTracer.activeSpan();
-        if (activeSpan.isPresent() && !explicitParent.get()) {
-            delegate.asChildOf(activeSpan.get().context());
+        if (!explicitParent.get()) {
+            final Optional<Span> activeSpan = GlobalTracer.activeSpan();
+            if (activeSpan.isPresent()) delegate.asChildOf(activeSpan.get().context());
         }
         return new GlobalSpan(delegate.start());
     }
