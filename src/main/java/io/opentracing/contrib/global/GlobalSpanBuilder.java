@@ -44,20 +44,22 @@ class GlobalSpanBuilder implements Tracer.SpanBuilder {
     @Override
     public Span start() {
         if (!explicitParent.get()) {
-            final Optional<Span> activeSpan = GlobalTracer.activeSpan();
-            if (activeSpan.isPresent()) delegate.asChildOf(activeSpan.get().context());
+            GlobalTracer.activeSpan().ifPresent(activeSpan -> delegate.asChildOf(activeSpan.context()));
         }
         return new GlobalSpan(delegate.start());
     }
 
     @Override
     public Tracer.SpanBuilder asChildOf(Span parent) {
-        return asChildOf(parent != null ? parent.context() : null); // Re-use CHILD_OF logic.
+        // Re-use CHILD_OF logic from the 'main' asChildOf method.
+        return asChildOf(parent != null ? parent.context() : null);
     }
 
     @Override
     public Tracer.SpanBuilder addReference(String referenceType, SpanContext referencedContext) {
+        // Re-use CHILD_OF logic from the 'main' asChildOf method.
         if (References.CHILD_OF.equals(referenceType)) return asChildOf(referencedContext);
+
         delegate.addReference(referenceType, referencedContext);
         return this;
     }

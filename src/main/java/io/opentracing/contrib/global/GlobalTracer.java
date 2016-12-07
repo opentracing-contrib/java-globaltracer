@@ -5,8 +5,8 @@ import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
-import nl.talsmasoftware.concurrency.context.Context;
-import nl.talsmasoftware.concurrency.context.ContextManager;
+import nl.talsmasoftware.context.Context;
+import nl.talsmasoftware.context.ContextManager;
 
 import java.util.Optional;
 import java.util.ServiceLoader;
@@ -102,8 +102,7 @@ public class GlobalTracer {
      * @return The currently active global Span, or <code>empty</code> if there is no Span currently active.
      */
     public static Optional<Span> activeSpan() {
-        final Context<Span> activeContext = GlobalSpan.activeContext();
-        return Optional.ofNullable(activeContext != null ? activeContext.getValue() : null);
+        return GlobalSpan.activeContext().flatMap(Context::getValue);
     }
 
     /**
@@ -121,7 +120,7 @@ public class GlobalTracer {
         }
 
         @Override
-        public Context<Span> getActiveContext() {
+        public Optional<Context<Span>> getActiveContext() {
             return GlobalSpan.activeContext();
         }
     }

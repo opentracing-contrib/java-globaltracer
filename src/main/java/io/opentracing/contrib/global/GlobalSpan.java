@@ -3,8 +3,8 @@ package io.opentracing.contrib.global;
 import io.opentracing.NoopSpan;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
-import nl.talsmasoftware.concurrency.context.Context;
-import nl.talsmasoftware.concurrency.context.threadlocal.AbstractThreadLocalContext;
+import nl.talsmasoftware.context.Context;
+import nl.talsmasoftware.context.threadlocal.AbstractThreadLocalContext;
 
 import java.util.Map;
 import java.util.Optional;
@@ -36,8 +36,8 @@ class GlobalSpan extends AbstractThreadLocalContext<Span> implements Span {
      *
      * @return The currently active context or <code>null</code> if no context is active.
      */
-    static Context<Span> activeContext() {
-        return ACTIVE.get();
+    static Optional<Context<Span>> activeContext() {
+        return Optional.ofNullable(ACTIVE.get());
     }
 
     /**
