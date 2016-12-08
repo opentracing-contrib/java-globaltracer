@@ -22,7 +22,7 @@ import static java.util.Objects.requireNonNull;
  * <p>
  * The singleton instance can be instantiated in one of two ways:
  * <ol>
- * <li>Explicitly, by calling {@link #registerDelegate(Tracer)} with a configured tracer implementation, or:</li>
+ * <li>Explicitly, by calling {@link #register(Tracer)} with a configured tracer implementation, or:</li>
  * <li>Automatically by using the Java SPI mechanism to {@link ServiceLoader load an implementation}
  * from the classpath.</li>
  * </ol>
@@ -34,22 +34,29 @@ import static java.util.Objects.requireNonNull;
  * @see Tracer
  * @see ServiceLoader
  */
-public class GlobalTracer {
+public final class GlobalTracer {
     private static final Logger LOGGER = Logger.getLogger(GlobalTracer.class.getName());
 
     /**
      * Use the standard Java SPI {@link ServiceLoader} concept to look for a registered Tracer delegate if no
-     * {@link #registerDelegate(Tracer) explicit delegate} was provided.
+     * {@link #register(Tracer) explicit delegate} was provided.
      */
     private static final ServiceLoader<Tracer> DELEGATES = ServiceLoader.load(Tracer.class);
 
     /**
      * The resolved {@link Tracer} to delegate the global tracing implementation to.<br>
-     * This can be either an {@link #registerDelegate(Tracer) explicitly registered delegate} or an
+     * This can be either an {@link #register(Tracer) explicitly registered delegate} or an
      * {@link #DELEGATES automatically resolved Tracer implementation}.<br>
      * Management of this reference is the responsibility of the {@link #tracer()} method.
      */
     private static final AtomicReference<Tracer> delegate = new AtomicReference<>();
+
+    /**
+     * Private constructor to prevent instantiation of this utility class.
+     */
+    private GlobalTracer() {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * This method allows explicit registration of a configured {@link Tracer} implementation to back the behaviour
@@ -57,13 +64,13 @@ public class GlobalTracer {
      *
      * @param delegate The delegate tracer to delegate the global tracing implementation to.
      */
-    public static void registerDelegate(Tracer delegate) {
+    public static void register(Tracer delegate) {
         GlobalTracer.delegate.set(delegate != null ? new GlobalSpanTracer(delegate) : null);
         LOGGER.log(Level.INFO, "Registered GlobalTracer delegate: {0}.", delegate);
     }
 
     /**
-     * This method returns the {@link #registerDelegate(Tracer) explicitly registered} Tracer implementation,
+     * This method returns the {@link #register(Tracer) explicitly registered} Tracer implementation,
      * or attempts to {@link ServiceLoader load an available implementation} according to the standard
      * Java SPI conventions.
      * <p>
@@ -120,8 +127,8 @@ public class GlobalTracer {
         }
 
         @Override
-        public Optional<Context<Span>> getActiveContext() {
-            return Optional.ofNullable(GlobalSpan.activeContext());
+        public Context<Span> getActiveContext() {
+            return GlobalSpan.activeContext();
         }
     }
 

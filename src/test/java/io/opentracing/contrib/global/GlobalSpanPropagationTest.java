@@ -42,12 +42,12 @@ public class GlobalSpanPropagationTest {
         oldDelegate = tracer();
         threadpool = new ContextAwareExecutorService(Executors.newCachedThreadPool());
         tracer = new MockTracer();
-        GlobalTracer.registerDelegate(tracer);
+        GlobalTracer.register(tracer);
     }
 
     @After
     public void tearDown() {
-        GlobalTracer.registerDelegate(oldDelegate instanceof NoopTracer ? null : oldDelegate);
+        GlobalTracer.register(oldDelegate instanceof NoopTracer ? null : oldDelegate);
     }
 
     @Test
