@@ -116,7 +116,7 @@ public class GlobalTracer {
     public static class Manager implements ContextManager<Span> {
         @Override
         public Context<Span> initializeNewContext(Span value) {
-            return new GlobalSpan(value);
+            return new GlobalSpan(value, false);
         }
 
         @Override

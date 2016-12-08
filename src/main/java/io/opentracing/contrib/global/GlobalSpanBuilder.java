@@ -47,7 +47,7 @@ class GlobalSpanBuilder implements Tracer.SpanBuilder {
         if (!explicitParent.get()) {
             GlobalTracer.activeSpan().ifPresent(activeSpan -> delegate.asChildOf(activeSpan.context()));
         }
-        return new GlobalSpan(delegate.start());
+        return new GlobalSpan(delegate.start(), true);
     }
 
     @Override

@@ -20,15 +20,29 @@ class GlobalSpan extends AbstractThreadLocalContext<Span> implements Span {
      */
     private static final ThreadLocal<GlobalSpan> ACTIVE = threadLocalInstanceOf(GlobalSpan.class);
 
+    private final boolean closeDelegate;
+
     /**
-     * Instantiates a new context with the specified value.
+     * This creates a new global Context with the specified delegate {@link Span}.<br>
      * The new context will be made the active context for the current thread.
+     * <p>
+     * This constructor is intended for the context manager when propagating this context.
+     * In that case, closing the context itself should <em>not</em> automatically close the span as well, because
+     * the purpose of the context is propagation only.
+     * Closing a span is a convenience for easily 'finishing' the span. But that should not happen with propagated
+     * global spans, because we did not <em>create</em> those, but merely propagated them.
+     * <p>
+     * tldr; <code>closeDelegate</code> should be <code>true</code> for newly wrapped {@link Span} objects, and
+     * <code>false</code> for propagated existing spans.
      *
-     * @param delegate The new span to become the 'implicit active span' in this new context
-     *                 (or <code>null</code> to register a new context with 'no active span').
+     * @param delegate      The delegate span that becomes the globally active span.
+     * @param closeDelegate Whether the delegate span was just created and closing this context should close the
+     *                      span as well, or <code>false</code> if the new global span resulted from propagation of
+     *                      an existing span.
      */
-    GlobalSpan(Span delegate) {
+    GlobalSpan(Span delegate, boolean closeDelegate) {
         super(delegate);
+        this.closeDelegate = closeDelegate;
     }
 
     /**
@@ -97,9 +111,13 @@ class GlobalSpan extends AbstractThreadLocalContext<Span> implements Span {
      */
     @Override
     public void close() {
-        if (!isClosed()) try {
-            delegateOrNoop().close();
-        } finally {
+        if (closeDelegate) {
+            try {
+                delegateOrNoop().close();
+            } finally {
+                super.close();
+            }
+        } else {
             super.close();
         }
     }

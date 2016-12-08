@@ -8,7 +8,6 @@ import io.opentracing.mock.MockTracer;
 import nl.talsmasoftware.context.executors.ContextAwareExecutorService;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
@@ -52,7 +51,6 @@ public class GlobalSpanPropagationTest {
     }
 
     @Test
-    @Ignore // Unfortunately there's still a bug in GlobalSpan close() somewhere..
     public void testSpanPropagation_newThread() throws ExecutionException, InterruptedException {
         // test code: outer span with an inner span in a background-thread.
         Future<?> future;
@@ -72,13 +70,6 @@ public class GlobalSpanPropagationTest {
         assertThat(GlobalTracer.activeSpan().isPresent(), is(false));
 
         List<MockSpan> finishedSpans = tracer.finishedSpans();
-        // TODO: Fix bug testPropagation span gets closed from outside (ok!)
-        //   ... but! also from the thread completion (which is normally ok as well, except in this case.. ?!?)
-        //
-        // (or is it?) quite a pickle, from the outside I definately would not expect this behaviour.
-        // I want the Span to propagate into the thread, but the close() should just restore any previous span,
-        // but NOT close the _actual_ span in this case, since it was not originally created in the thread!
-        // --> Solution: do not close actual span objects from the immediate Snaphot, merely their Context...
         assertThat(finishedSpans, hasSize(2));
         final MockSpan span1 = finishedSpans.get(0);
         final MockSpan span2 = finishedSpans.get(1);
