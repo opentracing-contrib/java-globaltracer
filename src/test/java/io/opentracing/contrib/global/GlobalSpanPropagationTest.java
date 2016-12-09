@@ -16,7 +16,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static io.opentracing.contrib.global.GlobalTracer.tracer;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
@@ -34,14 +33,14 @@ public class GlobalSpanPropagationTest {
     ExecutorService threadpool;
 
     Tracer oldDelegate;
-    MockTracer tracer;
+    MockTracer mockTracer;
 
     @Before
     public void setUp() {
-        oldDelegate = tracer();
+        oldDelegate = GlobalTracer.tracer();
         threadpool = new ContextAwareExecutorService(Executors.newCachedThreadPool());
-        tracer = new MockTracer();
-        GlobalTracer.register(tracer);
+        mockTracer = new MockTracer();
+        GlobalTracer.register(mockTracer);
     }
 
     @After
@@ -53,12 +52,12 @@ public class GlobalSpanPropagationTest {
     public void testSpanPropagation_newThread() throws ExecutionException, InterruptedException {
         // test code: outer span with an inner span in a background-thread.
         Future<?> future;
-        Span span = tracer().buildSpan("testPropagation").start();
+        Span span = GlobalTracer.tracer().buildSpan("testPropagation").start();
         try {
             span.setTag("username", "John Doe");
             future = threadpool.submit(new Runnable() {
                 public void run() {
-                    Span span2 = tracer().buildSpan("threadedCall").start();
+                    Span span2 = GlobalTracer.tracer().buildSpan("threadedCall").start();
                     try {
                         span2.setTag("monkeys", 12);
                         Thread.sleep(150L); // let it actually finish after the outer span.
@@ -76,7 +75,7 @@ public class GlobalSpanPropagationTest {
 
         assertThat(GlobalTracer.activeSpan(), is(nullValue()));
 
-        List<MockSpan> finishedSpans = tracer.finishedSpans();
+        List<MockSpan> finishedSpans = mockTracer.finishedSpans();
         assertThat(finishedSpans, hasSize(2));
         final MockSpan span1 = finishedSpans.get(0);
         final MockSpan span2 = finishedSpans.get(1);
