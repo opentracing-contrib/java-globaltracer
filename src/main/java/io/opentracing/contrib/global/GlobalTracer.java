@@ -8,13 +8,12 @@ import io.opentracing.propagation.Format;
 import nl.talsmasoftware.context.Context;
 import nl.talsmasoftware.context.ContextManager;
 
-import java.util.Optional;
-import java.util.ServiceLoader;
+import javax.imageio.spi.ServiceRegistry;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static java.util.Objects.requireNonNull;
 
 /**
  * The <code>GlobalTracer</code> class is not a {@link Tracer} implementation of itself, but instead a utility-class
@@ -23,7 +22,7 @@ import static java.util.Objects.requireNonNull;
  * The singleton instance can be instantiated in one of two ways:
  * <ol>
  * <li>Explicitly, by calling {@link #register(Tracer)} with a configured tracer implementation, or:</li>
- * <li>Automatically by using the Java SPI mechanism to {@link ServiceLoader load an implementation}
+ * <li>Automatically by using the Java <code>ServiceLoader</code> SPI mechanism to load an implementation
  * from the classpath.</li>
  * </ol>
  * <p>
@@ -32,16 +31,15 @@ import static java.util.Objects.requireNonNull;
  *
  * @author Sjoerd Talsma
  * @see Tracer
- * @see ServiceLoader
  */
 public final class GlobalTracer {
     private static final Logger LOGGER = Logger.getLogger(GlobalTracer.class.getName());
 
     /**
-     * Use the standard Java SPI {@link ServiceLoader} concept to look for a registered Tracer delegate if no
-     * {@link #register(Tracer) explicit delegate} was provided.
+     * Use the standard Java SPI <code>ServiceLoader</code> concept to look for a registered Tracer delegate if no
+     * {@link #register(Tracer) explicit delegate} was provided (including a pre-java6 workaround).
      */
-    private static final ServiceLoader<Tracer> DELEGATES = ServiceLoader.load(Tracer.class);
+    private static final Loader<Tracer> DELEGATES = new Loader<Tracer>(Tracer.class);
 
     /**
      * The resolved {@link Tracer} to delegate the global tracing implementation to.<br>
@@ -49,7 +47,7 @@ public final class GlobalTracer {
      * {@link #DELEGATES automatically resolved Tracer implementation}.<br>
      * Management of this reference is the responsibility of the {@link #tracer()} method.
      */
-    private static final AtomicReference<Tracer> delegate = new AtomicReference<>();
+    private static final AtomicReference<Tracer> delegate = new AtomicReference<Tracer>();
 
     /**
      * Private constructor to prevent instantiation of this utility class.
@@ -71,8 +69,7 @@ public final class GlobalTracer {
 
     /**
      * This method returns the {@link #register(Tracer) explicitly registered} Tracer implementation,
-     * or attempts to {@link ServiceLoader load an available implementation} according to the standard
-     * Java SPI conventions.
+     * or attempts to lazily load an available implementation according to the standard Java SPI conventions.
      * <p>
      * If no delegate is found, the {@link io.opentracing.NoopTracer NoopTracer} will be returned and no
      * {@link #activeSpan() globally-active spans} will be created.
@@ -108,8 +105,8 @@ public final class GlobalTracer {
      *
      * @return The currently active global Span, or <code>empty</code> if there is no Span currently active.
      */
-    public static Optional<Span> activeSpan() {
-        return Optional.ofNullable(GlobalSpan.activeContext());
+    public static Span activeSpan() {
+        return GlobalSpan.activeContext();
     }
 
     /**
@@ -121,12 +118,10 @@ public final class GlobalTracer {
      * @author Sjoerd Talsma
      */
     public static class Manager implements ContextManager<Span> {
-        @Override
         public Context<Span> initializeNewContext(Span value) {
             return new GlobalSpan(value, false);
         }
 
-        @Override
         public Context<Span> getActiveContext() {
             return GlobalSpan.activeContext();
         }
@@ -140,28 +135,62 @@ public final class GlobalTracer {
         private final Tracer delegate;
 
         private GlobalSpanTracer(Tracer delegate) {
-            this.delegate = requireNonNull(delegate, "Delegate Tracer is <null>.");
+            this.delegate = delegate;
+            if (delegate == null) throw new NullPointerException("Delegate Tracer is <null>.");
         }
 
-        @Override
         public SpanBuilder buildSpan(String operationName) {
             return new GlobalSpanBuilder(delegate.buildSpan(operationName));
         }
 
-        @Override
         public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {
             delegate.inject(spanContext, format, carrier);
         }
 
-        @Override
         public <C> SpanContext extract(Format<C> format, C carrier) {
             return delegate.extract(format, carrier);
         }
 
-        @Override
         public String toString() {
             return "GlobalTracer{delegate=" + delegate + '}';
         }
     }
 
+    /**
+     * Loader class to delegate to JDK 6 ServiceLoader or fallback to the old {@link ServiceRegistry}.
+     *
+     * @param <SVC> The type of service to load.
+     */
+    private static final class Loader<SVC> implements Iterable<SVC> {
+        private final Class<SVC> serviceType;
+        private final Iterable<SVC> delegate;
+
+        @SuppressWarnings("unchecked") // Type is actually safe, although we use reflection.
+        private Loader(Class<SVC> serviceType) {
+            this.serviceType = serviceType;
+            Iterable<SVC> serviceLoader = null;
+            try { // Attempt to use Java 1.6 ServiceLoader:
+                // ServiceLoader.load(ContextManager.class, ContextManagers.class.getClassLoader());
+                serviceLoader = (Iterable<SVC>) Class.forName("java.util.ServiceLoader")
+                        .getDeclaredMethod("load", Class.class, ClassLoader.class)
+                        .invoke(null, serviceType, serviceType.getClassLoader());
+            } catch (ClassNotFoundException cnfe) {
+                LOGGER.log(Level.FINEST, "Java 6 ServiceLoader not found, falling back to the imageio ServiceRegistry.");
+            } catch (NoSuchMethodException nsme) {
+                LOGGER.log(Level.SEVERE, "Could not find the 'load' method in the JDK's ServiceLoader.", nsme);
+            } catch (IllegalAccessException iae) {
+                LOGGER.log(Level.SEVERE, "Not allowed to call the 'load' method in the JDK's ServiceLoader.", iae);
+            } catch (InvocationTargetException ite) {
+                throw new IllegalStateException(String.format(
+                        "Exception calling the 'load' method in the JDK's ServiceLoader for the %s service.",
+                        serviceType.getSimpleName()), ite.getCause());
+            }
+            this.delegate = serviceLoader;
+        }
+
+        public Iterator<SVC> iterator() {
+            return delegate != null ? delegate.iterator()
+                    : ServiceRegistry.lookupProviders(serviceType, serviceType.getClassLoader());
+        }
+    }
 }

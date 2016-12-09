@@ -18,8 +18,7 @@ import java.util.concurrent.Future;
 
 import static io.opentracing.contrib.global.GlobalTracer.tracer;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 
 /**
  * This test is intended to show that a 'compatible' thread pool will actually propagate the global span into the
@@ -54,20 +53,28 @@ public class GlobalSpanPropagationTest {
     public void testSpanPropagation_newThread() throws ExecutionException, InterruptedException {
         // test code: outer span with an inner span in a background-thread.
         Future<?> future;
-        try (Span span = tracer().buildSpan("testPropagation").start()) {
+        Span span = tracer().buildSpan("testPropagation").start();
+        try {
             span.setTag("username", "John Doe");
-            future = threadpool.submit(() -> {
-                try (Span span2 = tracer().buildSpan("threadedCall").start()) {
-                    span2.setTag("monkeys", 12);
-                    Thread.sleep(150L); // let it actually finish after the outer span.
-                } catch (InterruptedException e) {
-                    throw new IllegalStateException("sleep interrupted!", e);
+            future = threadpool.submit(new Runnable() {
+                public void run() {
+                    Span span2 = tracer().buildSpan("threadedCall").start();
+                    try {
+                        span2.setTag("monkeys", 12);
+                        Thread.sleep(150L); // let it actually finish after the outer span.
+                    } catch (InterruptedException e) {
+                        throw new IllegalStateException("sleep interrupted!", e);
+                    } finally {
+                        span2.close();
+                    }
                 }
             });
+        } finally {
+            span.close();
         }
         future.get(); // block until background tasks completes.
 
-        assertThat(GlobalTracer.activeSpan().isPresent(), is(false));
+        assertThat(GlobalTracer.activeSpan(), is(nullValue()));
 
         List<MockSpan> finishedSpans = tracer.finishedSpans();
         assertThat(finishedSpans, hasSize(2));

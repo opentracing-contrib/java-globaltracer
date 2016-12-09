@@ -7,7 +7,6 @@ import nl.talsmasoftware.context.Context;
 import nl.talsmasoftware.context.threadlocal.AbstractThreadLocalContext;
 
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * This span delegates all its core methods to another span implementation, providing a global context.
@@ -61,10 +60,9 @@ class GlobalSpan extends AbstractThreadLocalContext<Span> implements Span {
      * @return The delegate span or the no-op span if no delegate is present.
      */
     private Span delegateOrNoop() {
-        return Optional.ofNullable(value).orElse(NoopSpan.INSTANCE);
+        return value != null ? value : NoopSpan.INSTANCE;
     }
 
-    @Override
     public SpanContext context() {
         return delegateOrNoop().context();
     }
@@ -76,7 +74,6 @@ class GlobalSpan extends AbstractThreadLocalContext<Span> implements Span {
      * @see Span#finish()
      * @see Context#close()
      */
-    @Override
     public void finish() {
         if (!isClosed()) try {
             delegateOrNoop().finish();
@@ -93,7 +90,6 @@ class GlobalSpan extends AbstractThreadLocalContext<Span> implements Span {
      * @see Span#finish(long)
      * @see Context#close()
      */
-    @Override
     public void finish(long finishMicros) {
         if (!isClosed()) try {
             delegateOrNoop().finish(finishMicros);
@@ -122,73 +118,61 @@ class GlobalSpan extends AbstractThreadLocalContext<Span> implements Span {
         }
     }
 
-    @Override
     public Span setOperationName(String operationName) {
         delegateOrNoop().setOperationName(operationName);
         return this;
     }
 
-    @Override
     public Span setTag(String key, String value) {
         delegateOrNoop().setTag(key, value);
         return this;
     }
 
-    @Override
     public Span setTag(String key, boolean value) {
         delegateOrNoop().setTag(key, value);
         return this;
     }
 
-    @Override
     public Span setTag(String key, Number value) {
         delegateOrNoop().setTag(key, value);
         return this;
     }
 
-    @Override
     public String getBaggageItem(String key) {
         return delegateOrNoop().getBaggageItem(key);
     }
 
-    @Override
     public Span setBaggageItem(String key, String value) {
         delegateOrNoop().setBaggageItem(key, value);
         return this;
     }
 
-    @Override
     public Span log(Map<String, ?> fields) {
         delegateOrNoop().log(fields);
         return this;
     }
 
-    @Override
     public Span log(long timestampMicroseconds, Map<String, ?> fields) {
         delegateOrNoop().log(timestampMicroseconds, fields);
         return this;
     }
 
-    @Override
     public Span log(String event) {
         delegateOrNoop().log(event);
         return this;
     }
 
-    @Override
     public Span log(long timestampMicroseconds, String event) {
         delegateOrNoop().log(timestampMicroseconds, event);
         return this;
     }
 
-    @Override
     @SuppressWarnings("deprecation") // We simply delegate this method as we're told.
     public Span log(String eventName, Object payload) {
         delegateOrNoop().log(eventName, payload);
         return this;
     }
 
-    @Override
     @SuppressWarnings("deprecation") // We simply delegate this method as we're told.
     public Span log(long timestampMicroseconds, String eventName, Object payload) {
         delegateOrNoop().log(timestampMicroseconds, eventName, payload);
