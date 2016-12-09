@@ -20,18 +20,18 @@
  * <a href="GlobalTracer.html#register-io.opentracing.Tracer-">register</a>
  * a configured delegate tracer to become the implicit 'global' tracer instance available throughout the application.
  * <p>
- * If no {@link io.opentracing.Tracer Tracer} has been explicitly registered yet, the utility class will attempt to
+ * If no {@link io.opentracing.Tracer Tracer} is explicitly registered, the utility class will attempt to
  * resolve it through the standard Java <code>ContextLoader</code> mechanism, looking for Tracer factory
  * implementations that have declared themselves through an entry in the
  * <code>"META-INF/services/io.opentracing.Tracer"</code> file.
  * <p>
  * The global tracer can be obtained by invoking the static
  * <a href="GlobalTracer.html#tracer--">tracer()</a> method.<br>
- * Even if no tracer has been registered previously nor any tracer service factories were found,
- * this static method will <em>always</em> return a tracer implementation
+ * Even if no tracer was previously registered nor any tracer service factories were found,
+ * this static method will <em>always</em> return a non-<code>null</code> Tracer implementation
  * (opting for the no-op tracer by default).
  * <p>
- * The currently-active {@link io.opentracing.Span Span} can be obtained from a call to the static
+ * The currently-active global {@link io.opentracing.Span Span} can be obtained from a call to the static
  * <a href="GlobalTracer.html#activeSpan--">activeSpan()</a> method.<br>
  * <em>Please note:</em> this method may return <code>null</code> if no active span currently exists.
  * <p>
@@ -41,7 +41,7 @@
  * Active spans are propagated to background threads automatically if the
  * {@link nl.talsmasoftware.context.executors.ContextAwareExecutorService ContextAwareExecutorService} is used.<br>
  * It is also possible to programatically pass a context snapshot to a new thread,
- * activating it within the new thread. Active Spans will automatically be included in such snapshots.<br>
+ * activating it within the new thread. Active global Spans will automatically be included in such snapshots.<br>
  * Please see the javadoc description of the {@link nl.talsmasoftware.context.ContextManagers ContextManagers}
  * utility class for more details on manually propagating snapshots.
  * <p>
