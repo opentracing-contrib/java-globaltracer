@@ -1,5 +1,5 @@
 # java-globaltracer
-A tracer providing global ThreadLocal Span propagation, delegating to another Tracer implementation.
+Global ThreadLocal Span for implicit propagation, delegating to another Tracer implementation.
 
 This library provides a utility-class to register a configured delegate tracer to become the implicit 'global' tracer instance available throughout the application.
 If no Tracer is registered, the utility class will attempt to resolve it through the standard Java ContextLoader mechanism, looking for Tracer factory implementations that have declared themselves through an entry in the `"META-INF/services/io.opentracing.Tracer"` file.
