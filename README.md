@@ -7,14 +7,10 @@ If no Tracer is registered, the utility class will attempt to resolve it through
 The global tracer can be obtained by invoking the static `GlobalTracer.tracer()` method.
 Even if no tracer was previously registered nor any tracer service factories were found, this static method will _always_ return a non-`null` Tracer implementation (opting for the no-op tracer by default).
 
-The currently-active global Span can be obtained from a call to the static `GlobalTracer.activeSpan()` method.
+The currently-active global Span can be obtained from a call to the static `GlobalSpanManager.activeSpan()` method.
 Please note: this method may return `null` if no active span currently exists.
 
 Starting a new span from the global tracer will automatically declare a 'child-of' reference to an active span if it exists.
 
-Active spans are propagated to background threads automatically if the `ContextAwareExecutorService` is used.
-It is also possible to programatically propagate a snapshot of all contexts to a new thread, activating it within the new thread. Active global Spans will automatically be included in such snapshots.
-Please see the javadoc description of the `ContextManagers` utility class for more details on manually propagating snapshots.
-
 The relation between these global tracer concepts and the Opentracing API are represented in the following UML diagram for this package:
-<img src="http://www.plantuml.com/plantuml/png/fLPjRvim4FxUN-6FJ6dz0oQKgQsgQTAQI0j_mC01dWn6s6tMTVdlCuG4Ox1n4hxmzjpvVFVSFQv82Q8c2I3ACQ-XaWr9Q9NZXAj76kESyPWmz7btX_ehOKG8zBtx7YaqDEelqgvF8OcaoG6j6iYfaD04HzoNh-YTqzG2bXqcKA0ZsW8ZYQJliAj9rKBR-nbuC8DqxWdhMy2lf2BvP2ihMb592QD_OGFxPsKFVsJGBghMxb_3zdKzDij1FdPndaoiyCDyOblGqnjbwJGa8fuBzMERTN7qNizPmvhbs4vbi96JdCsuzF15qlGNPD10bK2mKqcjydjqMJXxAejT6r945GKbAUk0yIhtj8n8FgpRtQymZ3bduBLVqtBpLiOTdvSCOvBdYbS_99IYpRrwQ4ZC87mbDNvHTFm8nzjOUr73v4Goq4ohmXYJAIwB8fXhmjE_lW3J_mdZ0kPD1SXjhJObAQysQfe4vt9CUQQmiuLRH0wLMeIUIpD5ggvy6kgX1TezJBnEiSwG6Sy3LTLpFR-jhR0sp_V84xomvD7N0kYqp3R-3OdqycK3QwoaYcLDref7nR0aJ9H4y4pkIGEuPoJkgTYFrp1Qcs91Oj7EPtcm3Dj86vtHschhchYHtbEd9z-GKVWFuokKP4ZJI2fN3mytEHjoRdYPJY97fg_K4BkB2srlbW_TsxLwuFBXBGqk9xugOVguIXPr9_DIFt1_cJeTwIT7aO66fyLwPR8taomQ82dZYMBsOsyKTTz-jjzcMlHMNofsrMD3x1wzCoEfUZezr5M7EuHs1cRJt540LlaTLTrNNHr63g5rMDarLpVo4qZJmbShJJk_xViegB7nouu5XaRvdZ-CDNrFMFD9SEc-Ands8u1ba7HzP8oEO_lrfuQ2fe2WhEK7oYYmL9XVIv05JyL_">
+<img src="http://plantuml.com/plantuml/png/hLR1RkCW4BttApXwbTOVK4LPRTDgrKCRQPiVmFQ4KDbW6PhTgjj_Ny1Ex036n5jVRC6R6PXvCyy88SHm1QB6EI3AKru3amtEAIDfpjKdpL9IyWoNwEFg2dLFNc8Xq4-plbLeQDGk6ZmVGc99yq-qQ81G8Q59MjotMtJWj1W1IuD95AX5ds2V_jWlDMPFc64IE03E9Js0Hcg_-Xq2OWc9nYYe4oBjL-wXG_Dcn5jU0cv-d68B7JpZNAqotwqeKpdQJHOXZJoKdGsS2UrGceDn0ObTXq22xzveMJW9Nc2ntgkDpSxaQwsE2N_agNBfmFBSJcMeaTvIM2uZVE6Y-0KxQ83bgcmgJunSeykEyvlA_Oi-qfQgDf2ugfEICn9fkSMaZslUCmmxMiomV7whCjDJKuOP9aInvL52PPYeFXgSbR1ymdNwe1ZslZo_nchbeyQHHXr7xg44eZf6XxNfCTnhotc-dxSLEXAXAzWvPaSP5Vl4DpEEUrsjt7q_pLi6WlJMpIMaXUmBDGazLSP5bfmaAksdX7zVZSBqxQvH93XmZzvN-B9tFKrYqaDy5XffFXplcrgHJbBEdfNYJ1tt67wJlK8kesur1lQEsLTymAcQjMlD4zqACqRcySlrjVoRfbypoVkpkvAtkBdvwY2ZEkHEc432Pch3k8iBRVzR5eRUvixva8_eaHzo4ZlzRH-pv6xen2_XVJzCKyVqX_EB4K53ZzISTUgqgWpX0O7nmCQqPdfKE0cCLQ20KK2C0bRZkZGqYfCeso9MhMoxkEl7Q9XrySlaR6XyWR9PCMD5pf-4aDw5aZ4kVICzQVh8TE7mHwrjm4ulzxG015Kjtz6EGba8UxK2kUU5-0S0">

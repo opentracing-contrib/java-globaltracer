@@ -73,7 +73,7 @@ public class GlobalSpanPropagationTest {
         }
         future.get(); // block until background tasks completes.
 
-        assertThat(GlobalTracer.activeSpan(), is(nullValue()));
+        assertThat(GlobalSpanManager.activeSpan(), is(nullValue()));
 
         List<MockSpan> finishedSpans = mockTracer.finishedSpans();
         assertThat(finishedSpans, hasSize(2));

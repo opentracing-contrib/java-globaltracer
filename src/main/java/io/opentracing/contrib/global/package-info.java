@@ -32,18 +32,11 @@
  * (opting for the no-op tracer by default).
  * <p>
  * The currently-active global {@link io.opentracing.Span Span} can be obtained from a call to the static
- * <a href="GlobalTracer.html#activeSpan--">activeSpan()</a> method.<br>
+ * <a href="GlobalSpanManager.html#activeSpan--">activeSpan()</a> method.<br>
  * <em>Please note:</em> this method may return <code>null</code> if no active span currently exists.
  * <p>
  * Starting a new span from the global tracer will automatically declare a 'child of' reference
  * to any active span if it exists.
- * <p>
- * Active spans are propagated to background threads automatically if the
- * {@link nl.talsmasoftware.context.executors.ContextAwareExecutorService ContextAwareExecutorService} is used.<br>
- * It is also possible to programatically pass a context snapshot to a new thread,
- * activating it within the new thread. Active global Spans will automatically be included in such snapshots.<br>
- * Please see the javadoc description of the {@link nl.talsmasoftware.context.ContextManagers ContextManagers}
- * utility class for more details on manually propagating snapshots.
  * <p>
  * The relation between these concepts and the Opentracing API are represented in the following class diagram
  * for this package:<br>

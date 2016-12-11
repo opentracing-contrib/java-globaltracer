@@ -1,12 +1,7 @@
 package io.opentracing.contrib.global;
 
-import io.opentracing.NoopTracerFactory;
-import io.opentracing.Span;
-import io.opentracing.SpanContext;
-import io.opentracing.Tracer;
+import io.opentracing.*;
 import io.opentracing.propagation.Format;
-import nl.talsmasoftware.context.Context;
-import nl.talsmasoftware.context.ContextManager;
 
 import javax.imageio.spi.ServiceRegistry;
 import java.lang.reflect.InvocationTargetException;
@@ -25,9 +20,6 @@ import java.util.logging.Logger;
  * <li>Automatically by using the Java <code>ServiceLoader</code> SPI mechanism to load an implementation
  * from the classpath.</li>
  * </ol>
- * <p>
- * Spans and their contexts created by this <code>GlobalTracer</code> will propagate along with standard
- * <code>ContextSnapshot</code> propagation.
  *
  * @author Sjoerd Talsma
  * @see Tracer
@@ -58,13 +50,18 @@ public final class GlobalTracer {
 
     /**
      * This method allows explicit registration of a configured {@link Tracer} implementation to back the behaviour
-     * of the {@link #activeSpan() active global span} objects.
+     * of the {@link GlobalSpanManager#activeSpan() active global span} objects.
      *
      * @param delegate The delegate tracer to delegate the global tracing implementation to.
      */
-    public static void register(Tracer delegate) {
-        GlobalTracer.delegate.set(delegate != null ? new GlobalSpanTracer(delegate) : null);
-        LOGGER.log(Level.INFO, "Registered GlobalTracer delegate: {0}.", delegate);
+    public static void register(final Tracer delegate) {
+        if (delegate == null || delegate instanceof NoopTracer) {
+            GlobalTracer.delegate.set(delegate); // no global span state management.
+            LOGGER.log(Level.INFO, "Cleared GlobalTracer delegate registration.");
+        } else {
+            GlobalTracer.delegate.set(new GlobalSpanTracer(delegate));
+            LOGGER.log(Level.INFO, "Registered GlobalTracer delegate: {0}.", delegate);
+        }
     }
 
     /**
@@ -72,17 +69,22 @@ public final class GlobalTracer {
      * or attempts to lazily load an available implementation according to the standard Java SPI conventions.
      * <p>
      * If no delegate is found, the {@link io.opentracing.NoopTracer NoopTracer} will be returned and no
-     * {@link #activeSpan() globally-active spans} will be created.
+     * {@link GlobalSpanManager#activeSpan() globally-active spans} will be created.
      *
      * @return The non-<code>null</code> global tracer to use.
      */
     public static Tracer tracer() {
         Tracer instance = delegate.get();
         if (instance == null) {
-            for (Tracer tracer : DELEGATES) {
+            for (final Iterator<Tracer> tracerIt = DELEGATES.iterator(); tracerIt.hasNext(); ) {
+                final Tracer tracer = tracerIt.next();
                 if (tracer != null) {
                     LOGGER.log(Level.FINE, "Tracer service loaded: {0}.", tracer);
-                    while (instance == null) { // Retry for race conditions, shouldn't normally happen.
+                    if (tracerIt.hasNext()) {
+                        LOGGER.log(Level.WARNING, "More than one Tracer service implementation found. " +
+                                "Please register the tracer to be used explicitly!");
+                        delegate.compareAndSet(null, NoopTracerFactory.create());
+                    } else while (instance == null) { // Retry for race conditions, shouldn't normally happen.
                         delegate.compareAndSet(null, new GlobalSpanTracer(tracer));
                         instance = delegate.get();
                     }
@@ -97,34 +99,6 @@ public final class GlobalTracer {
         }
         LOGGER.log(Level.FINEST, "Using tracer: {0}.", instance);
         return instance;
-    }
-
-    /**
-     * Static method to return the currently active global {@link Span}.<br>
-     * There is no guarantee that there is an active {@link Span} in all situations.
-     *
-     * @return The currently active global Span, or <code>empty</code> if there is no Span currently active.
-     */
-    public static Span activeSpan() {
-        return GlobalSpan.activeContext();
-    }
-
-    /**
-     * Manager class that is able to get and set the globally active {@link Span} through the use of the common
-     * {@link Context} concept.<br>
-     * This manager is declared as ContextManager provider for global {@link Span spans} in the
-     * <code>"/META-INF/services/nl.talsmasoftware.context.ContextManager"</code> service file.
-     *
-     * @author Sjoerd Talsma
-     */
-    public static class Manager implements ContextManager<Span> {
-        public Context<Span> initializeNewContext(Span value) {
-            return new GlobalSpan(value, false);
-        }
-
-        public Context<Span> getActiveContext() {
-            return GlobalSpan.activeContext();
-        }
     }
 
     /**
@@ -157,7 +131,7 @@ public final class GlobalTracer {
     }
 
     /**
-     * Loader class to delegate to JDK 6 ServiceLoader or fallback to the old {@link ServiceRegistry}.
+     * Loader class to delegate to JDK 6 ServiceLoader or fallback to the old {@link ServiceRegistry} (only for java 5).
      *
      * @param <SVC> The type of service to load.
      */

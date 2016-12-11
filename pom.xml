@@ -206,11 +206,6 @@
             <artifactId>opentracing-noop</artifactId>
             <version>0.20.2</version>
         </dependency>
-        <dependency>
-            <groupId>nl.talsmasoftware</groupId>
-            <artifactId>context-propagation</artifactId>
-            <version>0.3.0</version>
-        </dependency>
 
         <!-- Optionally provided dependencies: -->
 
@@ -221,6 +216,13 @@
             <version>0.20.2</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>nl.talsmasoftware</groupId>
+            <artifactId>context-propagation</artifactId>
+            <version>0.3.0</version>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
