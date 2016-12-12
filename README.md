@@ -64,8 +64,11 @@ To create a generic _opentracing_ compatible filter, the hypothetical filter cou
 the following fragment:
 ````java
 public void doFilter(someContext, someFilterChain) {
-    SpanContext inboundContext = GlobalTracer.tracer().extract(SOME_FORMAT, someContext);
-    try (Span span = GlobalTracer.tracer().buildSpan("inboundOperation").asChildOf(inboundContext).start()) {
+    Format<Carrier> someFormat = ... // usually known by filter
+    Carrier someCarrier = ... // Usually obtained from someContext
+    SpanContext inboundContext = GlobalTracer.tracer().extract(someFormat, someCarrier);
+    try (Span span = GlobalTracer.tracer().buildSpan("inboundOperation")
+            .asChildOf(inboundContext).start()) {
         someFilterChain.filter(someContext); // continue the filtered operation within 'span'
     }
 }
@@ -98,5 +101,6 @@ Therefore there are several utility classes provided in the `global.concurrent` 
    `Executors` utility class in the JVM, for example: `TracedExecutors.newCachedThreadPool()`.
 
 ## General overview
-The relation between these global tracer concepts and the Opentracing API are represented in the following UML diagram for this package:
+The relation between these global tracer concepts and the Opentracing API are represented in the following UML diagram for this package:  
+
 <img src="http://plantuml.com/plantuml/png/bLLDJ-Cm4BttLupOIrQKIdkjK5TGYHK7u01_OE9CNIF7ZcAtMeJuxuppqOOqJXjVOetVyyoycN4000pcv0eK1CekR476boYKaGjXUQlIXTGsHGsVinaqIsXq3lvLzZT6Kycdq5cVpgDNuWkkIvBAUIgJ6lTx2NkhiWZOLvY4GJNw0Fiw-iRK1PZ_4SHhWUO93Sfu9B_QI1uDcuoWv8JAVaziaKWv0BMdW0lHXkyO43qb0SFGjRQECDKKmGjDMDuTRdVX-jHQjlOyj3fmPZL7wpEqZeZAi12RWPeFL_FewphTAPrLURzoSnXvgDKY6E_3QL-q3bkPTnA-qcBDtKN__HmUR9cZlrslvh0UR8yEdmbXb_GudViwsRQx7trwSxE2gpzNmtaleIZjNcNaPd7sIOiiOUUwZAYuWJCYhQWpI289zU4RPPJR9kSaQs3QLhKQXOhGcsSlTEJVK3RbdyEX3Kw784vgMdCYwtcNfzMKZfAqbSaJ5hSjw-_g4aRGPmxJUPUbV_HmiLptA2LtrwEdVABMSeWSIDLcpETBGIM_GzOyypzXGcfjV2zf6E-fOiHu_GdkFl9X40UcQmd7XxaUoERHs_9G0-M5_u2D8fsvlZKdlxMP-mO0">  
