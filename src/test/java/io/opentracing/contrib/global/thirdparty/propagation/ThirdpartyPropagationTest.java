@@ -35,20 +35,19 @@ public class ThirdpartyPropagationTest {
      */
     ExecutorService thirdpartyThreadpool;
 
-    Tracer oldDelegate;
     MockTracer mockTracer;
+    Tracer previousGlobalTracer;
 
     @Before
     public void setUp() {
-        oldDelegate = GlobalTracer.tracer();
         thirdpartyThreadpool = new ContextAwareExecutorService(Executors.newCachedThreadPool());
         mockTracer = new MockTracer();
-        GlobalTracer.register(mockTracer);
+        previousGlobalTracer = GlobalTracer.register(mockTracer);
     }
 
     @After
     public void tearDown() {
-        GlobalTracer.register(oldDelegate instanceof NoopTracer ? null : oldDelegate);
+        GlobalTracer.register(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
         thirdpartyThreadpool.shutdown();
     }
 

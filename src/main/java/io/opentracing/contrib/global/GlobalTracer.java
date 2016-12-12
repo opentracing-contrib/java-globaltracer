@@ -55,11 +55,13 @@ public final class GlobalTracer {
      * of the {@link #tracer() global tracer} instance.
      *
      * @param delegate The delegate tracer to delegate the global tracing implementation to.
+     * @return The previous global tracer, or <code>null</code> if no global tracer was (auto-)registered yet.
      */
-    public static void register(final Tracer delegate) {
-        DELEGATE.set(GlobalSpanTracer.wrap(delegate));
+    public static Tracer register(final Tracer delegate) {
+        final Tracer previous = DELEGATE.getAndSet(GlobalSpanTracer.wrap(delegate));
         LOGGER.log(Level.INFO, delegate == null ? "Cleared GlobalTracer delegate registration."
                 : "Registered GlobalTracer delegate: {0}.", delegate);
+        return previous;
     }
 
     /**
