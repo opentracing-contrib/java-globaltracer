@@ -146,6 +146,7 @@
                             <docencoding>${project.reporting.outputEncoding}</docencoding>
                             <useStandardDocletOptions>true</useStandardDocletOptions>
                             <additionalparam>
+                                -umlIncludePackagePrivateClasses false
                                 -umlImageFormat SVG
                                 -umlCommand "hide empty fields"
                                 -umlCommand "hide empty methods"

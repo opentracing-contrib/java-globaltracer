@@ -1,11 +1,18 @@
 package io.opentracing.contrib.global;
 
-import io.opentracing.*;
+import io.opentracing.NoopSpanContext;
+import io.opentracing.Span;
+import io.opentracing.SpanContext;
+import io.opentracing.Tracer;
+import io.opentracing.contrib.global.delegation.DelegateSpan;
+import io.opentracing.contrib.global.delegation.DelegateSpanBuilder;
 
-import java.util.Map;
+import java.io.Closeable;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Wrapper implementation that delegates all regular {@link Tracer.SpanBuilder} methods to the specified
+ * SpanBuilder implementation that delegates all regular {@link Tracer.SpanBuilder} methods to the specified
  * delegate builder instead.<br>
  * Only the {@link #start()} method is overridden,
  * starting and {@link GlobalSpanManager#activate(Span) activating} a new global {@link Span} wrapping the
@@ -16,106 +23,83 @@ import java.util.Map;
  *
  * @author Sjoerd Talsma
  */
-class GlobalSpanBuilder implements Tracer.SpanBuilder {
-    private final Tracer.SpanBuilder delegate;
+class GlobalSpanBuilder extends DelegateSpanBuilder {
 
     GlobalSpanBuilder(Tracer.SpanBuilder delegate) {
-        this.delegate = delegate;
-        if (delegate == null) throw new NullPointerException("Delegate SpanBuilder is <null>.");
+        super(delegate);
     }
 
     /**
-     * Obtains the {@link GlobalSpanManager#activeSpan() active global span} and returns it,
-     * except when it's <code>null</code> or the no-op span, in which case no span (<code>null</code>) is returned.
+     * Obtains the {@link GlobalSpanManager#activeSpan() active global span} and returns its
+     * {@link Span#context() context}, except when this context is the no-op SpanContext,
+     * in which case <code>null</code> is returned.
      *
-     * @return The active span or <code>null</code> if there is no active span implementation available.
+     * @return The active SpanContext or <code>null</code> if there is no active SpanContext available (or is no-op).
+     * @see NoopSpanContext
      */
-    private static Span activeGlobalSpan() {
-        final Span active = GlobalSpanManager.activeSpan();
-        return active == null || active instanceof NoopSpan ? null : active;
+    private static SpanContext activeSpanContext() {
+        final Span activeSpan = GlobalSpanManager.activeSpan();
+        final SpanContext activeSpanContext = activeSpan != null ? activeSpan.context() : null;
+        return activeSpanContext instanceof NoopSpanContext ? null : activeSpanContext;
     }
 
-    private static SpanContext activeGlobalSpanContext() {
-        final Span activeGlobalSpan = activeGlobalSpan();
-        return activeGlobalSpan != null ? activeGlobalSpan.context() : null;
-    }
-
-    public Tracer.SpanBuilder asChildOf(SpanContext parent) {
-        if (parent == null || parent instanceof NoopSpanContext) {
-            return activeGlobalSpan() != null ? this : NoopSpanBuilder.INSTANCE;
-        }
-        delegate.asChildOf(parent);
-        return this;
-    }
-
+    @Override
     public Span start() {
-        final SpanContext activeContext = activeGlobalSpanContext();
+        // Tell the delegate builder that the new Span should be a 'child of' the active span context.
+        final SpanContext activeContext = activeSpanContext();
         if (activeContext != null) delegate.asChildOf(activeContext);
-        final Span newActiveSpan = delegate.start();
-        final GlobalSpanManager.GlobalSpanDeactivator deactivator = GlobalSpanManager.activate(newActiveSpan);
-        // TODO refactor to inner-class, first get unit-test functioning again!
-        return new DelegateSpan(newActiveSpan) {
-            public void finish() {
-                try {
-                    super.finish();
-                } finally {
-                    deactivator.close();
-                }
+
+        // Return a new 'active' span that deactivates itself again when finished.
+        final Span newSpan = delegate.start();
+        return new ActiveSpan(newSpan, GlobalSpanManager.activate(newSpan));
+    }
+
+    /**
+     * Implementation of an 'active span'.<br>
+     * This active span will deactivate itself after it has been finished,
+     * otherwise delegating al span functionality to the underlying Tracer implementation.
+     */
+    private static final class ActiveSpan extends DelegateSpan {
+        private static final Logger LOGGER = Logger.getLogger(ActiveSpan.class.getName());
+        private volatile Closeable deactivator;
+
+        private ActiveSpan(Span delegate, Closeable deactivator) {
+            super(delegate);
+            this.deactivator = deactivator;
+        }
+
+        private void deactivate() {
+            if (this.deactivator != null) try {
+                this.deactivator.close();
+                this.deactivator = null;
+            } catch (Exception deactivationException) {
+                LOGGER.log(Level.WARNING, "Exception deactivating {0}.", new Object[]{this, deactivationException});
             }
+        }
 
-            public void finish(long finishMicros) {
-                try {
-                    super.finish(finishMicros);
-                } finally {
-                    deactivator.close();
-                }
+        public void finish() {
+            try {
+                super.finish();
+            } finally {
+                this.deactivate();
             }
+        }
 
-            public void close() {
-                try {
-                    super.close();
-                } finally {
-                    deactivator.close();
-                }
+        public void finish(long finishMicros) {
+            try {
+                super.finish(finishMicros);
+            } finally {
+                this.deactivate();
             }
-        };
-    }
+        }
 
-    public Tracer.SpanBuilder asChildOf(Span parent) {
-        // Re-use CHILD_OF logic from the 'main' asChildOf method.
-        return asChildOf(parent != null ? parent.context() : null);
-    }
-
-    public Tracer.SpanBuilder addReference(String referenceType, SpanContext referencedContext) {
-        // Re-use CHILD_OF logic from the 'main' asChildOf method.
-        if (References.CHILD_OF.equals(referenceType)) return asChildOf(referencedContext);
-
-        delegate.addReference(referenceType, referencedContext);
-        return this;
-    }
-
-    public Tracer.SpanBuilder withStartTimestamp(long microseconds) {
-        delegate.withStartTimestamp(microseconds);
-        return this;
-    }
-
-    public Tracer.SpanBuilder withTag(String key, String value) {
-        delegate.withTag(key, value);
-        return this;
-    }
-
-    public Tracer.SpanBuilder withTag(String key, boolean value) {
-        delegate.withTag(key, value);
-        return this;
-    }
-
-    public Tracer.SpanBuilder withTag(String key, Number value) {
-        delegate.withTag(key, value);
-        return this;
-    }
-
-    public Iterable<Map.Entry<String, String>> baggageItems() {
-        return delegate.baggageItems();
+        public void close() {
+            try {
+                super.close();
+            } finally {
+                this.deactivate();
+            }
+        }
     }
 
 }

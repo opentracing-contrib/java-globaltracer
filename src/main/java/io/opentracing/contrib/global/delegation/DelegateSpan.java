@@ -1,4 +1,4 @@
-package io.opentracing.contrib.global;
+package io.opentracing.contrib.global.delegation;
 
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
@@ -6,13 +6,16 @@ import io.opentracing.SpanContext;
 import java.util.Map;
 
 /**
- * Abstract delegate span that can be extended by concrete implementations.
+ * Abstract delegate {@link Span} that can be extended by concrete implementations to override individual methods.
  *
  * @author Sjoerd Talsma
  */
 public abstract class DelegateSpan implements Span {
 
-    private final Span delegate;
+    /**
+     * Non-<code>null</code> delegate span to forward all called methods to.
+     */
+    protected final Span delegate;
 
     public DelegateSpan(Span delegate) {
         this.delegate = delegate;
@@ -94,5 +97,10 @@ public abstract class DelegateSpan implements Span {
     public Span log(long timestampMicroseconds, String eventName, Object payload) {
         delegate.log(timestampMicroseconds, eventName, payload);
         return this;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "{delegate=" + delegate + '}';
     }
 }
