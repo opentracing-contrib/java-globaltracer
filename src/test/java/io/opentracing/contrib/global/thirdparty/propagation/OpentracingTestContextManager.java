@@ -1,14 +1,16 @@
-package io.opentracing.contrib.global;
+package io.opentracing.contrib.global.thirdparty.propagation;
 
 import io.opentracing.NoopSpan;
 import io.opentracing.Span;
+import io.opentracing.contrib.global.GlobalSpanManager;
 import nl.talsmasoftware.context.Context;
 import nl.talsmasoftware.context.ContextManager;
 
 import java.io.Closeable;
 
 /**
- * (too) simple implementation to demonstrate linking to a general context-propagation mechanism.
+ * (too) simple implementation to demonstrate linking a general context-propagation mechanism to the
+ * {@link GlobalSpanManager}.
  *
  * @author Sjoerd Talsma
  */

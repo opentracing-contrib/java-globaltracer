@@ -1,11 +1,12 @@
-package io.opentracing.contrib.global;
+package io.opentracing.contrib.global.concurrent;
 
 import io.opentracing.NoopTracer;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
+import io.opentracing.contrib.global.GlobalSpanManager;
+import io.opentracing.contrib.global.GlobalTracer;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
-import nl.talsmasoftware.context.executors.ContextAwareExecutorService;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,32 +14,24 @@ import org.junit.Test;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
 /**
- * This test is intended to show that a 'compatible' thread pool will actually propagate the global span into the
- * new thread.
- *
  * @author Sjoerd Talsma
  */
-public class GlobalSpanPropagationTest {
+public class TracedExecutorServiceTest {
 
-    /**
-     * A 'context-aware' thread-pool that knows that is needs to propagate GlobalSpan objects.
-     */
-    ExecutorService threadpool;
-
+    ExecutorService tracedThreadpool;
     Tracer oldDelegate;
     MockTracer mockTracer;
 
     @Before
     public void setUp() {
         oldDelegate = GlobalTracer.tracer();
-        threadpool = new ContextAwareExecutorService(Executors.newCachedThreadPool());
+        tracedThreadpool = TracedExecutors.newCachedThreadPool();
         mockTracer = new MockTracer();
         GlobalTracer.register(mockTracer);
     }
@@ -46,6 +39,7 @@ public class GlobalSpanPropagationTest {
     @After
     public void tearDown() {
         GlobalTracer.register(oldDelegate instanceof NoopTracer ? null : oldDelegate);
+        tracedThreadpool.shutdown();
     }
 
     @Test
@@ -55,7 +49,7 @@ public class GlobalSpanPropagationTest {
         Span span = GlobalTracer.tracer().buildSpan("testPropagation").start();
         try {
             span.setTag("username", "John Doe");
-            future = threadpool.submit(new Runnable() {
+            future = tracedThreadpool.submit(new Runnable() {
                 public void run() {
                     Span span2 = GlobalTracer.tracer().buildSpan("threadedCall").start();
                     try {

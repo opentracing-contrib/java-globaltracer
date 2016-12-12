@@ -1,1 +1,1 @@
-io.opentracing.contrib.global.OpentracingTestContextManager
+io.opentracing.contrib.global.thirdparty.propagation.OpentracingTestContextManager
