@@ -1,7 +1,10 @@
 package io.opentracing.contrib.global;
 
-import io.opentracing.*;
-import io.opentracing.propagation.Format;
+import io.opentracing.NoopTracer;
+import io.opentracing.NoopTracerFactory;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
+import io.opentracing.contrib.global.delegation.DelegateTracer;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
@@ -20,9 +23,9 @@ import java.util.logging.Logger;
  * </ol>
  *
  * @author Sjoerd Talsma
- * @see Tracer
  * @navassoc - provides 1 io.opentracing.Tracer
  * @navassoc - uses - GlobalSpanManager
+ * @see Tracer
  */
 public final class GlobalTracer {
     private static final Logger LOGGER = Logger.getLogger(GlobalTracer.class.getName());
@@ -54,13 +57,9 @@ public final class GlobalTracer {
      * @param delegate The delegate tracer to delegate the global tracing implementation to.
      */
     public static void register(final Tracer delegate) {
-        if (delegate == null || delegate instanceof NoopTracer) {
-            DELEGATE.set(delegate); // no global span state management.
-            LOGGER.log(Level.INFO, "Cleared GlobalTracer delegate registration.");
-        } else {
-            DELEGATE.set(new GlobalSpanTracer(delegate));
-            LOGGER.log(Level.INFO, "Registered GlobalTracer delegate: {0}.", delegate);
-        }
+        DELEGATE.set(GlobalSpanTracer.wrap(delegate));
+        LOGGER.log(Level.INFO, delegate == null ? "Cleared GlobalTracer delegate registration."
+                : "Registered GlobalTracer delegate: {0}.", delegate);
     }
 
     /**
@@ -75,14 +74,14 @@ public final class GlobalTracer {
     public static Tracer tracer() {
         Tracer instance = DELEGATE.get();
         if (instance == null) {
-            final Tracer singleton = ServiceLoader.loadSingleton(Tracer.class, DEFAULT_PROVIDER);
+            final Tracer singleton = GlobalSpanTracer.wrap(ServiceLoader.loadSingleton(Tracer.class, DEFAULT_PROVIDER));
             while (instance == null && singleton != null) {
                 DELEGATE.compareAndSet(null, singleton);
                 instance = DELEGATE.get();
             }
-            LOGGER.log(Level.FINE, "Obtained global Tracer implementation: {0}.", instance);
+            LOGGER.log(Level.INFO, "Using global Tracer implementation: {0}.", instance);
         }
-        LOGGER.log(Level.FINEST, "Using tracer: {0}.", instance);
+        LOGGER.log(Level.FINEST, "Global tracer: {0}.", instance);
         return instance;
     }
 
@@ -90,28 +89,24 @@ public final class GlobalTracer {
      * Private wrapper class that delegates all tracing to the specified implementation but makes sure to register
      * all started {@link Span} instances as new {@link GlobalSpanManager#activeSpan() active spans}.
      */
-    private static class GlobalSpanTracer implements Tracer {
-        private final Tracer delegate;
-
+    private static class GlobalSpanTracer extends DelegateTracer {
         private GlobalSpanTracer(Tracer delegate) {
-            this.delegate = delegate;
-            if (delegate == null) throw new NullPointerException("Delegate Tracer is <null>.");
+            super(delegate);
+        }
+
+        /**
+         * Wraps the delegate tracer if it is not null, not the {@link NoopTracer} and not already wrapped.
+         *
+         * @param delegate The delegate tracer to wrap.
+         * @return The wrapped tracer or the original tracer if wrapping was unnecessary..
+         */
+        private static Tracer wrap(Tracer delegate) {
+            return delegate == null || delegate instanceof NoopTracer || delegate instanceof GlobalSpanTracer
+                    ? delegate : new GlobalSpanTracer(delegate);
         }
 
         public SpanBuilder buildSpan(String operationName) {
             return new GlobalSpanBuilder(delegate.buildSpan(operationName));
-        }
-
-        public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {
-            delegate.inject(spanContext, format, carrier);
-        }
-
-        public <C> SpanContext extract(Format<C> format, C carrier) {
-            return delegate.extract(format, carrier);
-        }
-
-        public String toString() {
-            return "GlobalTracer{delegate=" + delegate + '}';
         }
     }
 

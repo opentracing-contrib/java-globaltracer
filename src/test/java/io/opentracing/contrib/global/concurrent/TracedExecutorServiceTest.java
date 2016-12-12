@@ -1,8 +1,6 @@
 package io.opentracing.contrib.global.concurrent;
 
-import io.opentracing.NoopTracer;
 import io.opentracing.Span;
-import io.opentracing.Tracer;
 import io.opentracing.contrib.global.GlobalSpanManager;
 import io.opentracing.contrib.global.GlobalTracer;
 import io.opentracing.mock.MockSpan;
@@ -16,6 +14,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+import static io.opentracing.contrib.global.delegation.DelegationTestUtil.unwrap;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
@@ -25,20 +24,17 @@ import static org.hamcrest.Matchers.*;
 public class TracedExecutorServiceTest {
 
     ExecutorService tracedThreadpool;
-    Tracer oldDelegate;
-    MockTracer mockTracer;
 
     @Before
     public void setUp() {
-        oldDelegate = GlobalTracer.tracer();
         tracedThreadpool = TracedExecutors.newCachedThreadPool();
-        mockTracer = new MockTracer();
-        GlobalTracer.register(mockTracer);
+        // Reset the (global) MockTracer.
+        assertThat(unwrap(GlobalTracer.tracer()), is(instanceOf(MockTracer.class)));
+        ((MockTracer) unwrap(GlobalTracer.tracer())).reset();
     }
 
     @After
     public void tearDown() {
-        GlobalTracer.register(oldDelegate instanceof NoopTracer ? null : oldDelegate);
         tracedThreadpool.shutdown();
     }
 
@@ -67,7 +63,9 @@ public class TracedExecutorServiceTest {
         }
         future.get(); // block until background tasks completes.
 
-        assertThat(GlobalSpanManager.activeSpan(), is(nullValue()));
+        assertThat(GlobalSpanManager.activeSpan(), is(nullValue())); // spans should be closed again.
+        assertThat(unwrap(GlobalTracer.tracer()), is(instanceOf(MockTracer.class)));
+        final MockTracer mockTracer = (MockTracer) unwrap(GlobalTracer.tracer());
 
         List<MockSpan> finishedSpans = mockTracer.finishedSpans();
         assertThat(finishedSpans, hasSize(2));

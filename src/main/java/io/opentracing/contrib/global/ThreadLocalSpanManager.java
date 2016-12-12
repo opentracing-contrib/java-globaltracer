@@ -11,8 +11,10 @@ import java.util.logging.Logger;
  * Default ThreadLocal-based implementation of the {@link GlobalSpanManager} class that implements the following
  * stack unwinding algorithm:
  * <ol>
- * <li>If the closed <code>managed span</code> is <strong>not</strong> the active span,
- * </li>
+ * <li>If the closed <code>managed span</code> is not the active span, the active span is left alone.</li>
+ * <li>Otherwise, the first parent that is <em>not yet closed</em> is set as the new active span.</li>
+ * <li>If no unclosed parents are available, the active span is cleared.</li>
+ * <li>Consecutive <code>close()</code> calls will be ignored.</li>
  * </ol>
  *
  * @author Sjoerd Talsma

@@ -18,8 +18,8 @@ public abstract class DelegateSpan implements Span {
     protected final Span delegate;
 
     public DelegateSpan(Span delegate) {
-        this.delegate = delegate;
         if (delegate == null) throw new NullPointerException("Delegate span was <null>.");
+        this.delegate = delegate;
     }
 
     public SpanContext context() {

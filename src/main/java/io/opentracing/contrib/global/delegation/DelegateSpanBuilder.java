@@ -21,8 +21,8 @@ public abstract class DelegateSpanBuilder implements Tracer.SpanBuilder {
     protected final Tracer.SpanBuilder delegate;
 
     public DelegateSpanBuilder(Tracer.SpanBuilder delegate) {
-        this.delegate = delegate;
         if (delegate == null) throw new NullPointerException("Delegate SpanBuilder was <null>.");
+        this.delegate = delegate;
     }
 
     private static boolean isNoop(Tracer.SpanBuilder builder) {

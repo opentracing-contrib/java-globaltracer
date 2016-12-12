@@ -21,7 +21,7 @@
  * a configured delegate tracer to become the implicit 'global' tracer instance available throughout the application.
  * <p>
  * If no {@link io.opentracing.Tracer Tracer} is explicitly registered, the utility class will attempt to
- * resolve it through the standard Java <code>ContextLoader</code> mechanism, looking for Tracer factory
+ * resolve it through the standard Java <code>ServiceLoader</code> mechanism, looking for Tracer factory
  * implementations that have declared themselves through an entry in the
  * <code>"META-INF/services/io.opentracing.Tracer"</code> file.
  * <p>
