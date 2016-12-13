@@ -96,17 +96,17 @@ GlobalTracer.tracer().inject(GlobalSpanManager.activeSpan(), someFormat, someCar
 ## Default in-process propagation
 By default, starting a new java `Thread` will lose the _active span_ from this library.
 Therefore there are several utility classes provided in the `global.concurrent` subpackage:
-1. `TracedRunnable.of(delegate)` which will capture the _active span_ when it is invoked to be re-activated 
-   just before calling the delegate `Runnable` implementation,
-   making sure to deactivate it again after the call has finished.
-2. `TracedCallable.of(delegate)` which will capture the _active span_ when it is invoked to be re-activated
-   just before calling the delegate `Callable` implementation,
-   making sure to deactivate it again after the call has finished.
-3. `TracedExecutorService.traced(delegate)` which will wrap a given `ExecutorService`
-   and replace all scheduled `Runnable` or `Callable` tasks with their _Traced_
-   variants just before scheduling them with the delegate.
-4. `TracedExecutors` utility-class with static factory methods comparable with the
-   `Executors` utility class in the JVM, for example: `TracedExecutors.newCachedThreadPool()`.
+ 1. `TracedRunnable.of(delegate)` which will capture the _active span_ when it is invoked to be re-activated 
+    just before calling the delegate `Runnable` implementation,
+    making sure to deactivate it again after the call has finished.
+ 2. `TracedCallable.of(delegate)` which will capture the _active span_ when it is invoked to be re-activated
+    just before calling the delegate `Callable` implementation,
+    making sure to deactivate it again after the call has finished.
+ 3. `TracedExecutorService.traced(delegate)` which will wrap a given `ExecutorService`
+    and replace all scheduled `Runnable` or `Callable` tasks with their _Traced_
+    variants just before scheduling them with the delegate.
+ 4. `TracedExecutors` utility-class with static factory methods comparable with the
+    `Executors` utility class in the JVM, for example: `TracedExecutors.newCachedThreadPool()`.
 
 ## General overview
 The relation between these global tracer concepts and the Opentracing API are represented in the following UML diagram for this package:  
