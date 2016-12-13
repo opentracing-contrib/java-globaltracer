@@ -64,12 +64,20 @@ To create a generic _opentracing_ compatible filter, the hypothetical filter cou
 the following fragment:
 ````java
 public void doFilter(someContext, someFilterChain) {
+    // Obtain the inbound context:
     Format<Carrier> someFormat = ... // usually known by filter
     Carrier someCarrier = ... // Usually obtained from someContext
     SpanContext inboundContext = GlobalTracer.tracer().extract(someFormat, someCarrier);
+    
+    // Create a new span as child of the inbound context.
     try (Span span = GlobalTracer.tracer().buildSpan("inboundOperation")
             .asChildOf(inboundContext).start()) {
         someFilterChain.filter(someContext); // continue the filtered operation within 'span'
+    } finally { // Clears any active spans.
+        // This is mostly a safety measure that can be taken in outermost filters
+        // due to the use of threadpools on most application platforms.
+        // clearActiveSpans() can be called as cleanup before returning a thread back to the pool.
+        GlobalSpanManager.clearActiveSpans();
     }
 }
 ````
