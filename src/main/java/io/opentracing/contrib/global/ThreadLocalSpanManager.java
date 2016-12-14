@@ -2,13 +2,12 @@ package io.opentracing.contrib.global;
 
 import io.opentracing.Span;
 
-import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Default ThreadLocal-based implementation of the {@link GlobalSpanManager} class that implements the following
+ * Default ThreadLocal-based implementation of the {@link ActiveSpanManager} class that implements the following
  * stack unwinding algorithm:
  * <ol>
  * <li>If the closed <code>managed span</code> is not the active span, the active span is left alone.</li>
@@ -19,9 +18,9 @@ import java.util.logging.Logger;
  *
  * @author Sjoerd Talsma
  */
-class ThreadLocalSpanManager extends GlobalSpanManager {
+final class ThreadLocalSpanManager extends ActiveSpanManager {
 
-    private static final Logger LOGGER = Logger.getLogger(GlobalSpanManager.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(ActiveSpanManager.class.getName());
     private static final ThreadLocal<ManagedSpan> ACTIVE = new ThreadLocal<ManagedSpan>();
 
     ThreadLocalSpanManager() {
@@ -32,7 +31,7 @@ class ThreadLocalSpanManager extends GlobalSpanManager {
         return activeSpan != null ? activeSpan.span : null;
     }
 
-    public Closeable setActiveSpan(Span span) {
+    public SpanDeactivator setActiveSpan(Span span) {
         final ManagedSpan managedSpan = new ManagedSpan(span);
         ACTIVE.set(managedSpan);
         return managedSpan;
@@ -44,7 +43,7 @@ class ThreadLocalSpanManager extends GlobalSpanManager {
         return cleared;
     }
 
-    private static class ManagedSpan implements Closeable {
+    private static class ManagedSpan implements SpanDeactivator {
         private final ManagedSpan parent = ACTIVE.get();
         private final Span span;
         private final AtomicBoolean closed = new AtomicBoolean(false);
@@ -53,7 +52,7 @@ class ThreadLocalSpanManager extends GlobalSpanManager {
             this.span = span;
         }
 
-        public void close() {
+        public void deactivate() {
             if (closed.compareAndSet(false, true)) {
                 ManagedSpan current = ACTIVE.get();
                 if (this == current) {

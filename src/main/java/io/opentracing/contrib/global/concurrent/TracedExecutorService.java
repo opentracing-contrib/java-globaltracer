@@ -1,7 +1,7 @@
 package io.opentracing.contrib.global.concurrent;
 
 import io.opentracing.Span;
-import io.opentracing.contrib.global.GlobalSpanManager;
+import io.opentracing.contrib.global.ActiveSpanManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.concurrent.*;
 
 /**
- * {@link ExecutorService} wrapper that will propagate the {@link GlobalSpanManager#activeSpan() active span}
+ * {@link ExecutorService} wrapper that will propagate the {@link ActiveSpanManager#activeSpan() active span}
  * into the calls that are executed.
  *
  * @author Sjoerd Talsma
@@ -72,7 +72,7 @@ public class TracedExecutorService implements ExecutorService {
     protected <T> Collection<? extends Callable<T>> tracedTasks(final Collection<? extends Callable<T>> tasks) {
         if (tasks == null) throw new NullPointerException("Collection of scheduled tasks is <null>.");
         final Collection<Callable<T>> result = new ArrayList<Callable<T>>(tasks.size());
-        final Span activeSpan = GlobalSpanManager.activeSpan();
+        final Span activeSpan = ActiveSpanManager.activeSpan();
         for (Callable<T> task : tasks) {
             result.add(new TracedCallable<T>(task, activeSpan));
         }

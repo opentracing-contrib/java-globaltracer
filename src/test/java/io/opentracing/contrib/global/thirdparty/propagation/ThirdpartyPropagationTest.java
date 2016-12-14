@@ -3,7 +3,7 @@ package io.opentracing.contrib.global.thirdparty.propagation;
 import io.opentracing.NoopTracer;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
-import io.opentracing.contrib.global.GlobalSpanManager;
+import io.opentracing.contrib.global.ActiveSpanManager;
 import io.opentracing.contrib.global.GlobalTracer;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
@@ -31,7 +31,7 @@ import static org.hamcrest.Matchers.*;
 public class ThirdpartyPropagationTest {
 
     /**
-     * A 'context-aware' thread-pool that knows that is needs to propagate GlobalSpan objects.
+     * A 'context-aware' thread-pool that knows that is needs to propagate ActiveSpan objects.
      */
     ExecutorService thirdpartyThreadpool;
 
@@ -60,7 +60,10 @@ public class ThirdpartyPropagationTest {
             span.setTag("username", "John Doe");
             future = thirdpartyThreadpool.submit(new Runnable() {
                 public void run() {
-                    Span span2 = GlobalTracer.tracer().buildSpan("threadedCall").start();
+                    Span span2 = GlobalTracer.tracer()
+                            .buildSpan("threadedCall")
+                            .asChildOf(ActiveSpanManager.activeSpan())
+                            .start();
                     try {
                         span2.setTag("monkeys", 12);
                         Thread.sleep(150L); // let it actually finish after the outer span.
@@ -76,7 +79,7 @@ public class ThirdpartyPropagationTest {
         }
         future.get(); // block until background tasks completes.
 
-        MatcherAssert.assertThat(GlobalSpanManager.activeSpan(), is(nullValue()));
+        MatcherAssert.assertThat(ActiveSpanManager.activeSpan(), is(nullValue()));
 
         List<MockSpan> finishedSpans = mockTracer.finishedSpans();
         assertThat(finishedSpans, hasSize(2));

@@ -32,7 +32,7 @@
  * (opting for the no-op tracer by default).
  * <p>
  * The currently-active global {@link io.opentracing.Span Span} can be obtained from a call to the static
- * <a href="GlobalSpanManager.html#activeSpan--">activeSpan()</a> method.<br>
+ * <a href="ActiveSpanManager.html#activeSpan--">activeSpan()</a> method.<br>
  * <em>Please note:</em> this method may return <code>null</code> if no active span currently exists.
  * <p>
  * Starting a new span from the global tracer will automatically declare a 'child of' reference

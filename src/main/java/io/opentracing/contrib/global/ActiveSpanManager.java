@@ -9,56 +9,74 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * This class manages the globally <em>active</em> {@link Span}.<br>
+ * Manages the <em>active</em> {@link Span}.<br>
+ * A {@link Span} becomes active in the current process after a call to {@link #activate(Span)}.
+ * <p>
  * The default implementation will use a {@link ThreadLocal ThreadLocal storage} to maintain the active {@link Span}.
  * <p>
  * Each {@link Span} implementation obtained from the {@link GlobalTracer#tracer() global tracer} will automatically
  * become the <em>active</em> {@link Span} until it is {@link Span#finish() finished} or {@link Span#close() closed}.<br>
  * As a result, {@link io.opentracing.Tracer Tracer} clients need not worry about interacting with this
- * {@link GlobalSpanManager} explicitly.
+ * {@link ActiveSpanManager} explicitly.
  * <p>
- * Providers of {@link io.opentracing.Tracer Tracer} implementations that want to customize the global Span management
- * can provide their own
+ * Providers of {@link io.opentracing.Tracer Tracer} implementations that want to customize the active Span management
+ * can provide their own implementation by either:
+ * <ol>
+ * <li>calling {@link #setInstance(ActiveSpanManager)} programmatically, or</li>
+ * <li>defining a <code>META-INF/services/io.opentracing.contrib.global.ActiveSpanManager</code> service file
+ * containing the classname of the implementation</li>
+ * </ol>
  *
  * @author Sjoerd Talsma
  * @navassoc - activeSpan - io.opentracing.Span
  */
-public abstract class GlobalSpanManager {
-    private static final Logger LOGGER = Logger.getLogger(GlobalSpanManager.class.getName());
+public abstract class ActiveSpanManager {
+    private static final Logger LOGGER = Logger.getLogger(ActiveSpanManager.class.getName());
+
+    /**
+     * Interface to deactivate an active {@link Span} with.
+     */
+    public interface SpanDeactivator {
+        /**
+         * Deactivates the {@link #activate(Span) active Span} this object was returned for.
+         */
+        void deactivate();
+    }
 
     /**
      * Overridable singleton instance of the global span manager.
      */
-    private static final AtomicReference<GlobalSpanManager> INSTANCE = new AtomicReference<GlobalSpanManager>();
+    private static final AtomicReference<ActiveSpanManager> INSTANCE = new AtomicReference<ActiveSpanManager>();
 
-    private static final Callable<GlobalSpanManager> DEFAULT_PROVIDER = new Callable<GlobalSpanManager>() {
-        public GlobalSpanManager call() throws Exception {
+    private static final Callable<ActiveSpanManager> DEFAULT_PROVIDER = new Callable<ActiveSpanManager>() {
+        public ActiveSpanManager call() throws Exception {
             return new ThreadLocalSpanManager();
         }
     };
 
-    private static GlobalSpanManager getInstance() {
-        GlobalSpanManager instance = INSTANCE.get();
+    private static ActiveSpanManager getInstance() {
+        ActiveSpanManager instance = INSTANCE.get();
         if (instance == null) {
-            final GlobalSpanManager singleton = SingletonServiceLoader.loadSingleton(GlobalSpanManager.class, DEFAULT_PROVIDER);
+            final ActiveSpanManager singleton = SingletonServiceLoader.loadSingleton(ActiveSpanManager.class, DEFAULT_PROVIDER);
             while (instance == null && singleton != null) {
                 INSTANCE.compareAndSet(null, singleton);
                 instance = INSTANCE.get();
             }
-            LOGGER.log(Level.FINE, "Singleton GlobalSpanManager implementation: {0}.", instance);
+            LOGGER.log(Level.FINE, "Singleton ActiveSpanManager implementation: {0}.", instance);
         }
         return instance;
     }
 
     /**
-     * This method allows explicit registration of a configured <code>GlobalSpanManager</code> implementation
+     * This method allows explicit registration of a configured <code>ActiveSpanManager</code> implementation
      * to override the behaviour of the default <code>ThreadLocal</code> implementation.
+     * <p>
+     * The previously active span manager is returned so it can be restored if necessary.
      *
      * @param instance The overridden implementation to use for in-process span management.
-     * @return The previous <code>GlobalSpanManager</code> that was initialized before,
-     * or <code>null</code> if there was no previous instance active.
+     * @return The previous <code>ActiveSpanManager</code> that was initialized before.
      */
-    protected static GlobalSpanManager registerInstance(GlobalSpanManager instance) {
+    protected static ActiveSpanManager setInstance(ActiveSpanManager instance) {
         return INSTANCE.getAndSet(instance);
     }
 
@@ -83,18 +101,15 @@ public abstract class GlobalSpanManager {
      * @return The object that will return the <em>active</em> span back to the current state when closed.
      * @see #activeSpan()
      */
-    public static Closeable activate(Span span) {
+    public static SpanDeactivator activate(Span span) {
         return getInstance().setActiveSpan(span);
     }
 
     /**
-     * This method clears <em>all</em> active spans if they exist.
+     * Clears any active spans.
      * <p>
-     * For in-process stack-based global span manager implementations, this method should clear the entire stack
-     * for the current process.
-     * <p>
-     * This method exists to allow boundary filters a failsafe way to clear any unclosed active spans before finishing
-     * and makes sure that any Threads that are returned to thread pools can be cleaned before they get re-used.
+     * This method allows boundary filters to clear any unclosed active spans before returning the Thread back to
+     * the threadpool.
      *
      * @return <code>true</code> if there were active spans that were cleared,
      * or <code>false</code> if there were no active spans left.
@@ -103,11 +118,11 @@ public abstract class GlobalSpanManager {
         return getInstance().clearAllActiveSpans();
     }
 
-    // The abstract methods to be implemented by the span manager.
+    // The abstract methods to be implemented by the span manager. // TODO JavaDoc
 
     protected abstract Span getActiveSpan();
 
-    protected abstract Closeable setActiveSpan(Span span);
+    protected abstract SpanDeactivator setActiveSpan(Span span);
 
     protected abstract boolean clearAllActiveSpans();
 

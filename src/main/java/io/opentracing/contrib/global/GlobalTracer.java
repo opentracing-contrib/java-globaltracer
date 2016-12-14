@@ -1,10 +1,7 @@
 package io.opentracing.contrib.global;
 
-import io.opentracing.NoopTracer;
 import io.opentracing.NoopTracerFactory;
-import io.opentracing.Span;
 import io.opentracing.Tracer;
-import io.opentracing.contrib.global.delegation.ForwardingTracer;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,7 +21,7 @@ import java.util.logging.Logger;
  *
  * @author Sjoerd Talsma
  * @navassoc - provides 1 io.opentracing.Tracer
- * @navassoc - uses - GlobalSpanManager
+ * @navassoc - uses - ActiveSpanManager
  * @see Tracer
  */
 public final class GlobalTracer {
@@ -51,14 +48,16 @@ public final class GlobalTracer {
     }
 
     /**
-     * This method allows explicit registration of a configured {@link Tracer} implementation to back the behaviour
-     * of the {@link #tracer() global tracer} instance.
+     * Explicit registration of a configured {@link Tracer} to back the behaviour
+     * of the {@link #tracer() global tracer}.
+     * <p>
+     * The previous global tracer is returned so it can be restored if necessary.
      *
-     * @param delegate The delegate tracer to delegate the global tracing implementation to.
-     * @return The previous global tracer, or <code>null</code> if no global tracer was (auto-)registered yet.
+     * @param delegate Tracer to delegate the tracing implementation to.
+     * @return The previous global tracer.
      */
     public static Tracer register(final Tracer delegate) {
-        final Tracer previous = DELEGATE.getAndSet(GlobalSpanTracer.wrap(delegate));
+        final Tracer previous = DELEGATE.getAndSet(ActiveSpanTracer.wrap(delegate));
         LOGGER.log(Level.INFO, delegate == null ? "Cleared GlobalTracer delegate registration."
                 : "Registered GlobalTracer delegate: {0}.", delegate);
         return previous;
@@ -66,17 +65,18 @@ public final class GlobalTracer {
 
     /**
      * This method returns the {@link #register(Tracer) explicitly registered} Tracer implementation,
-     * or attempts to lazily load an available implementation according to the standard Java SPI conventions.
+     * or attempts to lazily load the available implementation according to the standard Java
+     * {@link java.util.ServiceLoader ServiceLoader}.
      * <p>
-     * If no delegate is found, the {@link io.opentracing.NoopTracer NoopTracer} will be returned and no
-     * {@link GlobalSpanManager#activeSpan() globally-active spans} will be created.
+     * If no delegate is found, the {@link io.opentracing.NoopTracer NoopTracer} will be returned.
+     * In this case no {@link ActiveSpanManager#activeSpan() globally-active spans} will be created.
      *
      * @return The non-<code>null</code> global tracer to use.
      */
     public static Tracer tracer() {
         Tracer instance = DELEGATE.get();
         if (instance == null) {
-            final Tracer singleton = GlobalSpanTracer.wrap(SingletonServiceLoader.loadSingleton(Tracer.class, DEFAULT_PROVIDER));
+            final Tracer singleton = ActiveSpanTracer.wrap(SingletonServiceLoader.loadSingleton(Tracer.class, DEFAULT_PROVIDER));
             while (instance == null && singleton != null) {
                 DELEGATE.compareAndSet(null, singleton);
                 instance = DELEGATE.get();
@@ -85,31 +85,6 @@ public final class GlobalTracer {
         }
         LOGGER.log(Level.FINEST, "Global tracer: {0}.", instance);
         return instance;
-    }
-
-    /**
-     * Private wrapper class that delegates all tracing to the specified implementation but makes sure to register
-     * all started {@link Span} instances as new {@link GlobalSpanManager#activeSpan() active spans}.
-     */
-    private static class GlobalSpanTracer extends ForwardingTracer {
-        private GlobalSpanTracer(Tracer delegate) {
-            super(delegate);
-        }
-
-        /**
-         * Wraps the delegate tracer if it is not null, not the {@link NoopTracer} and not already wrapped.
-         *
-         * @param delegate The delegate tracer to wrap.
-         * @return The wrapped tracer or the original tracer if wrapping was unnecessary..
-         */
-        private static Tracer wrap(Tracer delegate) {
-            return delegate == null || delegate instanceof NoopTracer || delegate instanceof GlobalSpanTracer
-                    ? delegate : new GlobalSpanTracer(delegate);
-        }
-
-        public SpanBuilder buildSpan(String operationName) {
-            return new GlobalSpanBuilder(delegate.buildSpan(operationName));
-        }
     }
 
 }

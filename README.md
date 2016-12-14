@@ -1,7 +1,7 @@
 # java-globaltracer
 Global ThreadLocal Span for implicit propagation, delegating to another Tracer implementation.
 
-This library provides two main utiltiy classes; `GlobalTracer` and `GlobalSpanManager`.
+This library provides two main utiltiy classes; `GlobalTracer` and `ActiveSpanManager`.
 The first is intended for used by application code and library developers,
 where the latter is more intended for boundary filters and `Tracer` implementations.
 
@@ -18,24 +18,24 @@ This utility class has three main purposes:
     created from it are automatically registered as _active span_ and deregistered
     when they finish.
 
-## GlobalSpanManager
+## ActiveSpanManager
 This utility class provides the following functionality.
- 1. The `GlobalSpanManager.activate()` static method that is automatically called from
+ 1. The `ActiveSpanManager.activate()` static method that is automatically called from
     the `GlobalTracer` instance. 
  2. The `Closable` result from this `activate()` method will deactviate the given `Span`
     if needed. However, the `Spans` returned by the `GlobalTracer` will also make sure
     they get deactivated whenever they're finished or closed.
- 3. A method `GlobalSpanManager.activeSpan()` that will return the _active span_ 
+ 3. A method `ActiveSpanManager.activeSpan()` that will return the _active span_ 
     from anywhere in the code. This may be useful for libraries that wish to add tags
     or log information in the active span.
  4. It contains a default implementation that uses `ThreadLocal` storage to manage
     the globally _active span_, activating and deactivating it at the appropriate
     moments (starting / closing spans etc).
  5. `Tracer` implementations or applications that require more customized span management
-    can provide their own subclass of `GlobalSpanManager` and either register it 
-    programmatically through the `GlobalSpanManager.registerInstance()` method 
+    can provide their own subclass of `ActiveSpanManager` and either register it 
+    programmatically through the `ActiveSpanManager.registerInstance()` method 
     or automatically by the Java SPI ServiceLoader via a 
-    `META-INF/services/io.opentracing.global.GlobalSpanManager` service definition.
+    `META-INF/services/io.opentracing.global.ActiveSpanManager` service definition.
 
 ## How to use this library
 This section tries to give some basic examples on how to use the Global tracer and
@@ -49,15 +49,15 @@ simply refer to the global tracer instead; any created `Span` will be made `chil
 try (Span span = GlobalTracer.tracer().buildSpan("someOperation").start()) {
     
     // ..traced code block here..
-    // calls to GlobalSpanManager.activeSpan() here get the new span reference
+    // calls to ActiveSpanManager.activeSpan() here get the new span reference
     // the new span is automatically a 'child-of' any previously active span (if applicable).
 
 }
-// calls to GlobalSpanManager.activeSpan() here will receive the active span from before the try block.
+// calls to ActiveSpanManager.activeSpan() here will receive the active span from before the try block.
 ````
 Due to the `try-with-resources` construct, the span will automatically close and restore the _active span_ state to what it was previously.  
 It should be noted that `Tracer` implementations need not be concerned with this functionality;
-it is provided by the `GlobalSpanManager` being invoked from the global tracer.
+it is provided by the `ActiveSpanManager` being invoked from the global tracer.
 
 ### From inbound filters at the application boundary (server)
 To create a generic _opentracing_ compatible filter, the hypothetical filter could look similar to
@@ -77,7 +77,7 @@ public void doFilter(someContext, someFilterChain) {
         // This is mostly a safety measure that can be taken in outermost filters
         // due to the use of threadpools on most application platforms.
         // clearActiveSpans() can be called as cleanup before returning a thread back to the pool.
-        GlobalSpanManager.clearActiveSpans();
+        ActiveSpanManager.clearActiveSpans();
     }
 }
 ````
@@ -89,7 +89,7 @@ The global tracer can also be used to inject the _active span_'s context into ou
 Format<Carrier> someFormat = ...
 Carrier someCarrier = ...
 // Leave the injection to the actual tracer implementation:
-GlobalTracer.tracer().inject(GlobalSpanManager.activeSpan(), someFormat, someCarrier);
+GlobalTracer.tracer().inject(ActiveSpanManager.activeSpan(), someFormat, someCarrier);
 // Call the actual client with the injected SpanContext in the carrier.
 ````
 

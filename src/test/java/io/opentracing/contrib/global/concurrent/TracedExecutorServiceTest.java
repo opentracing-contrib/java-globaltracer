@@ -1,7 +1,7 @@
 package io.opentracing.contrib.global.concurrent;
 
 import io.opentracing.Span;
-import io.opentracing.contrib.global.GlobalSpanManager;
+import io.opentracing.contrib.global.ActiveSpanManager;
 import io.opentracing.contrib.global.GlobalTracer;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
@@ -14,7 +14,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-import static io.opentracing.contrib.global.delegation.DelegationTestUtil.unwrap;
+import static io.opentracing.contrib.global.DelegationTestUtil.unwrap;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
@@ -47,7 +47,10 @@ public class TracedExecutorServiceTest {
             span.setTag("username", "John Doe");
             future = tracedThreadpool.submit(new Runnable() {
                 public void run() {
-                    Span span2 = GlobalTracer.tracer().buildSpan("threadedCall").start();
+                    Span span2 = GlobalTracer.tracer()
+                            .buildSpan("threadedCall")
+                            .asChildOf(ActiveSpanManager.activeSpan())
+                            .start();
                     try {
                         span2.setTag("monkeys", 12);
                         Thread.sleep(150L); // let it actually finish after the outer span.
@@ -63,7 +66,7 @@ public class TracedExecutorServiceTest {
         }
         future.get(); // block until background tasks completes.
 
-        assertThat(GlobalSpanManager.activeSpan(), is(nullValue())); // spans should be closed again.
+        assertThat(ActiveSpanManager.activeSpan(), is(nullValue())); // spans should be closed again.
         assertThat(unwrap(GlobalTracer.tracer()), is(instanceOf(MockTracer.class)));
         final MockTracer mockTracer = (MockTracer) unwrap(GlobalTracer.tracer());
 

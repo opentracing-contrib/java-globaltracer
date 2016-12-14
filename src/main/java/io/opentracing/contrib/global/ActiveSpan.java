@@ -1,24 +1,33 @@
-package io.opentracing.contrib.global.delegation;
+package io.opentracing.contrib.global;
 
-import io.opentracing.*;
+import io.opentracing.NoopSpan;
+import io.opentracing.Span;
+import io.opentracing.SpanContext;
+import io.opentracing.contrib.global.ActiveSpanManager.SpanDeactivator;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Abstract delegate {@link Span} that can be extended by concrete implementations to override individual methods.
+ * Implementation of an 'active span'.<br>
+ * This active span will deactivate itself after it has been finished, or closed.<br>
+ * All other span functionality is forwareded to the delegate Span.
  *
  * @author Sjoerd Talsma
  */
-abstract class ForwardingSpan implements Span {
+final class ActiveSpan implements Span {
+    private static final Logger LOGGER = Logger.getLogger(ActiveSpan.class.getName());
 
-    /**
-     * Non-<code>null</code> delegate span to forward all called methods to.
-     */
     protected Span delegate;
+    private final SpanDeactivator deactivator;
+    private final AtomicBoolean deactivated = new AtomicBoolean(false);
 
-    ForwardingSpan(Span delegate) {
+    ActiveSpan(Span delegate, SpanDeactivator deactivator) {
         if (delegate == null) throw new NullPointerException("Delegate span was <null>.");
         this.delegate = delegate;
+        this.deactivator = deactivator;
     }
 
     protected Span rewrap(Span span) {
@@ -27,20 +36,42 @@ abstract class ForwardingSpan implements Span {
         return this;
     }
 
-    public SpanContext context() {
-        return delegate.context();
+    void deactivate() {
+        if (deactivated.compareAndSet(false, true)) try {
+            deactivator.deactivate();
+        } catch (Exception deactivationException) {
+            LOGGER.log(Level.WARNING, "Exception deactivating {0}.", new Object[]{this, deactivationException});
+        }
     }
 
     public void finish() {
-        delegate.finish();
+        try {
+            delegate.finish();
+        } finally {
+            this.deactivate();
+        }
     }
 
     public void finish(long finishMicros) {
-        delegate.finish(finishMicros);
+        try {
+            delegate.finish(finishMicros);
+        } finally {
+            this.deactivate();
+        }
     }
 
     public void close() {
-        delegate.close();
+        try {
+            delegate.close();
+        } finally {
+            this.deactivate();
+        }
+    }
+
+    // Default behaviour is forwarded to the delegate Span:
+
+    public SpanContext context() {
+        return delegate.context();
     }
 
     public Span setTag(String key, String value) {
@@ -97,4 +128,5 @@ abstract class ForwardingSpan implements Span {
     public String toString() {
         return getClass().getSimpleName() + "{delegate=" + delegate + '}';
     }
+
 }
