@@ -1,7 +1,6 @@
 package io.opentracing.contrib.global.delegation;
 
-import io.opentracing.Span;
-import io.opentracing.SpanContext;
+import io.opentracing.*;
 
 import java.util.Map;
 
@@ -10,16 +9,22 @@ import java.util.Map;
  *
  * @author Sjoerd Talsma
  */
-public abstract class DelegateSpan implements Span {
+abstract class ForwardingSpan implements Span {
 
     /**
      * Non-<code>null</code> delegate span to forward all called methods to.
      */
-    protected final Span delegate;
+    protected Span delegate;
 
-    public DelegateSpan(Span delegate) {
+    ForwardingSpan(Span delegate) {
         if (delegate == null) throw new NullPointerException("Delegate span was <null>.");
         this.delegate = delegate;
+    }
+
+    protected Span rewrap(Span span) {
+        if (span == null || span instanceof NoopSpan) return NoopSpan.INSTANCE;
+        this.delegate = span;
+        return this;
     }
 
     public SpanContext context() {
@@ -39,43 +44,35 @@ public abstract class DelegateSpan implements Span {
     }
 
     public Span setTag(String key, String value) {
-        delegate.setTag(key, value);
-        return this;
+        return rewrap(delegate.setTag(key, value));
     }
 
     public Span setTag(String key, boolean value) {
-        delegate.setTag(key, value);
-        return this;
+        return rewrap(delegate.setTag(key, value));
     }
 
     public Span setTag(String key, Number value) {
-        delegate.setTag(key, value);
-        return this;
+        return rewrap(delegate.setTag(key, value));
     }
 
     public Span log(Map<String, ?> fields) {
-        delegate.log(fields);
-        return this;
+        return rewrap(delegate.log(fields));
     }
 
     public Span log(long timestampMicroseconds, Map<String, ?> fields) {
-        delegate.log(timestampMicroseconds, fields);
-        return this;
+        return rewrap(delegate.log(timestampMicroseconds, fields));
     }
 
     public Span log(String event) {
-        delegate.log(event);
-        return this;
+        return rewrap(delegate.log(event));
     }
 
     public Span log(long timestampMicroseconds, String event) {
-        delegate.log(timestampMicroseconds, event);
-        return this;
+        return rewrap(delegate.log(timestampMicroseconds, event));
     }
 
     public Span setBaggageItem(String key, String value) {
-        delegate.setBaggageItem(key, value);
-        return this;
+        return rewrap(delegate.setBaggageItem(key, value));
     }
 
     public String getBaggageItem(String key) {
@@ -83,20 +80,17 @@ public abstract class DelegateSpan implements Span {
     }
 
     public Span setOperationName(String operationName) {
-        delegate.setOperationName(operationName);
-        return this;
+        return rewrap(delegate.setOperationName(operationName));
     }
 
     @SuppressWarnings("deprecation") // We simply delegate this method as we're told.
     public Span log(String eventName, Object payload) {
-        delegate.log(eventName, payload);
-        return this;
+        return rewrap(delegate.log(eventName, payload));
     }
 
     @SuppressWarnings("deprecation") // We simply delegate this method as we're told.
     public Span log(long timestampMicroseconds, String eventName, Object payload) {
-        delegate.log(timestampMicroseconds, eventName, payload);
-        return this;
+        return rewrap(delegate.log(timestampMicroseconds, eventName, payload));
     }
 
     @Override

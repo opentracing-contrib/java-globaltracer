@@ -12,15 +12,15 @@ import io.opentracing.Tracer.SpanBuilder;
 public class DelegationTestUtil {
 
     public static Span unwrap(Span span) {
-        return span instanceof DelegateSpan ? ((DelegateSpan) span).delegate : span;
+        return span instanceof ForwardingSpan ? ((ForwardingSpan) span).delegate : span;
     }
 
     public static SpanBuilder unwrap(SpanBuilder spanBuilder) {
-        return spanBuilder instanceof DelegateSpanBuilder ? ((DelegateSpanBuilder) spanBuilder).delegate : spanBuilder;
+        return spanBuilder instanceof ForwardingSpanBuilder ? ((ForwardingSpanBuilder) spanBuilder).delegate : spanBuilder;
     }
 
     public static Tracer unwrap(final Tracer tracer) {
-        return tracer instanceof DelegateTracer ? ((DelegateTracer) tracer).delegate : tracer;
+        return tracer instanceof ForwardingTracer ? ((ForwardingTracer) tracer).delegate : tracer;
     }
 
 }

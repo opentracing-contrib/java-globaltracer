@@ -4,7 +4,7 @@ import io.opentracing.NoopTracer;
 import io.opentracing.NoopTracerFactory;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
-import io.opentracing.contrib.global.delegation.DelegateTracer;
+import io.opentracing.contrib.global.delegation.ForwardingTracer;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
@@ -91,7 +91,7 @@ public final class GlobalTracer {
      * Private wrapper class that delegates all tracing to the specified implementation but makes sure to register
      * all started {@link Span} instances as new {@link GlobalSpanManager#activeSpan() active spans}.
      */
-    private static class GlobalSpanTracer extends DelegateTracer {
+    private static class GlobalSpanTracer extends ForwardingTracer {
         private GlobalSpanTracer(Tracer delegate) {
             super(delegate);
         }

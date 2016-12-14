@@ -4,8 +4,8 @@ import io.opentracing.NoopSpanContext;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import io.opentracing.contrib.global.delegation.DelegateSpan;
-import io.opentracing.contrib.global.delegation.DelegateSpanBuilder;
+import io.opentracing.contrib.global.delegation.ForwardingSpan;
+import io.opentracing.contrib.global.delegation.ForwardingSpanBuilder;
 
 import java.io.Closeable;
 import java.util.logging.Level;
@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  *
  * @author Sjoerd Talsma
  */
-class GlobalSpanBuilder extends DelegateSpanBuilder {
+class GlobalSpanBuilder extends ForwardingSpanBuilder {
 
     GlobalSpanBuilder(Tracer.SpanBuilder delegate) {
         super(delegate);
@@ -59,7 +59,7 @@ class GlobalSpanBuilder extends DelegateSpanBuilder {
      * This active span will deactivate itself after it has been finished,
      * otherwise delegating al span functionality to the underlying Tracer implementation.
      */
-    private static final class ActiveSpan extends DelegateSpan {
+    private static final class ActiveSpan extends ForwardingSpan {
         private static final Logger LOGGER = Logger.getLogger(ActiveSpan.class.getName());
         private volatile Closeable deactivator;
 

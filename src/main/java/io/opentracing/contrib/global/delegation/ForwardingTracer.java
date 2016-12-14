@@ -5,19 +5,18 @@ import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 
 /**
- * Abstract delegate {@link Tracer Tracer} that can be extended by concrete implementations
- * to override individual methods.
+ * {@link Tracer Tracer} that forwards all methods to a delegate.
  *
  * @author Sjoerd Talsma
  */
-public abstract class DelegateTracer implements Tracer {
+abstract class ForwardingTracer implements Tracer {
 
     /**
      * Non-<code>null</code> delegate tracer to forward all called methods to.
      */
-    protected final Tracer delegate;
+    protected Tracer delegate;
 
-    public DelegateTracer(Tracer delegate) {
+    ForwardingTracer(Tracer delegate) {
         if (delegate == null) throw new NullPointerException("The delegate Tracer implementation is <null>.");
         this.delegate = delegate;
     }
@@ -27,6 +26,9 @@ public abstract class DelegateTracer implements Tracer {
     }
 
     public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {
+        if (spanContext instanceof ForwardingSpanContext) {
+            spanContext = ((ForwardingSpanContext) spanContext).delegate;
+        }
         delegate.inject(spanContext, format, carrier);
     }
 
