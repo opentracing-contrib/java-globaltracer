@@ -40,7 +40,7 @@ public abstract class GlobalSpanManager {
     private static GlobalSpanManager getInstance() {
         GlobalSpanManager instance = INSTANCE.get();
         if (instance == null) {
-            final GlobalSpanManager singleton = ServiceLoader.loadSingleton(GlobalSpanManager.class, DEFAULT_PROVIDER);
+            final GlobalSpanManager singleton = SingletonServiceLoader.loadSingleton(GlobalSpanManager.class, DEFAULT_PROVIDER);
             while (instance == null && singleton != null) {
                 INSTANCE.compareAndSet(null, singleton);
                 instance = INSTANCE.get();

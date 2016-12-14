@@ -76,7 +76,7 @@ public final class GlobalTracer {
     public static Tracer tracer() {
         Tracer instance = DELEGATE.get();
         if (instance == null) {
-            final Tracer singleton = GlobalSpanTracer.wrap(ServiceLoader.loadSingleton(Tracer.class, DEFAULT_PROVIDER));
+            final Tracer singleton = GlobalSpanTracer.wrap(SingletonServiceLoader.loadSingleton(Tracer.class, DEFAULT_PROVIDER));
             while (instance == null && singleton != null) {
                 DELEGATE.compareAndSet(null, singleton);
                 instance = DELEGATE.get();
