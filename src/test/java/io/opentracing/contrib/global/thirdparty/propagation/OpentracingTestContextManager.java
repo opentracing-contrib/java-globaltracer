@@ -1,8 +1,8 @@
 package io.opentracing.contrib.global.thirdparty.propagation;
 
 import io.opentracing.Span;
-import io.opentracing.contrib.global.ActiveSpanManager;
-import io.opentracing.contrib.global.ActiveSpanManager.SpanDeactivator;
+import io.opentracing.contrib.activespan.ActiveSpanManager;
+import io.opentracing.contrib.activespan.ActiveSpanManager.SpanDeactivator;
 import nl.talsmasoftware.context.Context;
 import nl.talsmasoftware.context.ContextManager;
 

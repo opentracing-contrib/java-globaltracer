@@ -4,6 +4,7 @@ import io.opentracing.NoopSpanBuilder;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer.SpanBuilder;
+import io.opentracing.contrib.activespan.ActiveSpanManager;
 
 import java.util.Map;
 

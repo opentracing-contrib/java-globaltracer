@@ -1,9 +1,10 @@
-package io.opentracing.contrib.global;
+package io.opentracing.contrib.activespan;
 
 import io.opentracing.NoopSpan;
 import io.opentracing.Span;
 
-import java.util.concurrent.Callable;
+import java.util.Iterator;
+import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -14,16 +15,10 @@ import java.util.logging.Logger;
  * <p>
  * The default implementation will use a {@link ThreadLocal ThreadLocal storage} to maintain the active {@link Span}.
  * <p>
- * Each {@link Span} implementation obtained from the {@link GlobalTracer#tracer() global tracer} will automatically
- * become the <em>active</em> {@link Span} until it is {@link Span#finish() finished} or {@link Span#close() closed}.<br>
- * As a result, {@link io.opentracing.Tracer Tracer} clients need not worry about interacting with this
- * {@link ActiveSpanManager} explicitly.
- * <p>
- * Providers of {@link io.opentracing.Tracer Tracer} implementations that want to customize the active Span management
- * can provide their own implementation by either:
+ * Custom implementations can be provided by:
  * <ol>
  * <li>calling {@link #setInstance(ActiveSpanManager)} programmatically, or</li>
- * <li>defining a <code>META-INF/services/io.opentracing.contrib.global.ActiveSpanManager</code> service file
+ * <li>defining a <code>META-INF/services/io.opentracing.contrib.activespan.ActiveSpanManager</code> service file
  * containing the classname of the implementation</li>
  * </ol>
  *
@@ -44,16 +39,10 @@ public abstract class ActiveSpanManager {
      */
     private static final AtomicReference<ActiveSpanManager> INSTANCE = new AtomicReference<ActiveSpanManager>();
 
-    private static final Callable<ActiveSpanManager> DEFAULT_PROVIDER = new Callable<ActiveSpanManager>() {
-        public ActiveSpanManager call() throws Exception {
-            return new ThreadLocalSpanManager();
-        }
-    };
-
     private static ActiveSpanManager getInstance() {
         ActiveSpanManager instance = INSTANCE.get();
         if (instance == null) {
-            final ActiveSpanManager singleton = SingletonServiceLoader.loadSingleton(ActiveSpanManager.class, DEFAULT_PROVIDER);
+            final ActiveSpanManager singleton = loadSingleton();
             while (instance == null && singleton != null) {
                 INSTANCE.compareAndSet(null, singleton);
                 instance = INSTANCE.get();
@@ -158,5 +147,35 @@ public abstract class ActiveSpanManager {
     protected abstract void deactivateSpan(SpanDeactivator deactivator);
 
     protected abstract boolean clearAllActiveSpans();
+
+    /**
+     * Loads a single service implementation from {@link ServiceLoader}.
+     *
+     * @return The single implementation or the ThreadLocalSpanManager.
+     */
+    private static ActiveSpanManager loadSingleton() {
+        ActiveSpanManager foundSingleton = null;
+        for (Iterator<ActiveSpanManager> implementations =
+             ServiceLoader.load(ActiveSpanManager.class, ActiveSpanManager.class.getClassLoader()).iterator();
+             foundSingleton == null && implementations.hasNext(); ) {
+            final ActiveSpanManager implementation = implementations.next();
+            if (implementation != null) {
+                LOGGER.log(Level.FINEST, "Service loaded: {0}.", implementation);
+                if (implementations.hasNext()) { // Don't actually load the next implementation, fall-back to default.
+                    LOGGER.log(Level.WARNING, "More than one ActiveSpanManager service implementation found. " +
+                            "Falling back to default implementation.");
+                    break;
+                } else {
+                    foundSingleton = implementation;
+                }
+            }
+        }
+        if (foundSingleton == null) {
+            LOGGER.log(Level.FINEST, "No ActiveSpanManager service implementation found. " +
+                    "Falling back to default implementation.");
+            foundSingleton = new ThreadLocalSpanManager();
+        }
+        return foundSingleton;
+    }
 
 }

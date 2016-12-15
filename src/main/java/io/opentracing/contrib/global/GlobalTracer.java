@@ -3,11 +3,14 @@ package io.opentracing.contrib.global;
 import io.opentracing.NoopTracerFactory;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
+import io.opentracing.contrib.activespan.ActiveSpanManager;
 import io.opentracing.contrib.global.concurrent.SpanAwareCallable;
 import io.opentracing.contrib.global.concurrent.SpanAwareRunnable;
 import io.opentracing.contrib.global.concurrent.TracedCallable;
 import io.opentracing.contrib.global.concurrent.TracedRunnable;
 
+import java.util.Iterator;
+import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
@@ -26,16 +29,11 @@ import java.util.logging.Logger;
  *
  * @author Sjoerd Talsma
  * @navassoc - provides 1 io.opentracing.Tracer
- * @navassoc - uses - ActiveSpanManager
+ * @navassoc - uses - io.opentracing.contrib.activespan.ActiveSpanManager
  * @see Tracer
  */
 public final class GlobalTracer {
     private static final Logger LOGGER = Logger.getLogger(GlobalTracer.class.getName());
-    private static final Callable<Tracer> DEFAULT_PROVIDER = new Callable<Tracer>() {
-        public Tracer call() throws Exception {
-            return NoopTracerFactory.create();
-        }
-    };
 
     /**
      * The resolved {@link Tracer} to delegate the global tracing implementation to.<br>
@@ -85,7 +83,7 @@ public final class GlobalTracer {
     public static Tracer tracer() {
         Tracer instance = DELEGATE.get();
         if (instance == null) {
-            final Tracer singleton = ActiveSpanTracer.wrap(SingletonServiceLoader.loadSingleton(Tracer.class, DEFAULT_PROVIDER));
+            final Tracer singleton = ActiveSpanTracer.wrap(loadSingleton());
             while (instance == null && singleton != null) {
                 DELEGATE.compareAndSet(null, singleton);
                 instance = DELEGATE.get();
@@ -156,4 +154,32 @@ public final class GlobalTracer {
         return TracedRunnable.of(runnable);
     }
 
+    /**
+     * Loads a single service implementation from {@link ServiceLoader}.
+     *
+     * @return The single service or a NoopTracer.
+     */
+    private static Tracer loadSingleton() {
+        Tracer foundSingleton = null;
+        for (Iterator<Tracer> implementations =
+             ServiceLoader.load(Tracer.class, Tracer.class.getClassLoader()).iterator();
+             foundSingleton == null && implementations.hasNext(); ) {
+            final Tracer implementation = implementations.next();
+            if (implementation != null) {
+                LOGGER.log(Level.FINEST, "Service loaded: {0}.", implementation);
+                if (implementations.hasNext()) { // Don't actually load the next implementation, fall-back to default.
+                    LOGGER.log(Level.WARNING, "More than one Tracer service implementation found. " +
+                            "Falling back to default implementation.");
+                    break;
+                } else {
+                    foundSingleton = implementation;
+                }
+            }
+        }
+        if (foundSingleton == null) {
+            LOGGER.log(Level.FINEST, "No Tracer service implementation found. Falling back to default implementation.");
+            foundSingleton = NoopTracerFactory.create();
+        }
+        return foundSingleton;
+    }
 }

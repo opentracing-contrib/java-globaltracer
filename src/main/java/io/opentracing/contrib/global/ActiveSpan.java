@@ -3,7 +3,8 @@ package io.opentracing.contrib.global;
 import io.opentracing.NoopSpan;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
-import io.opentracing.contrib.global.ActiveSpanManager.SpanDeactivator;
+import io.opentracing.contrib.activespan.ActiveSpanManager;
+import io.opentracing.contrib.activespan.ActiveSpanManager.SpanDeactivator;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;

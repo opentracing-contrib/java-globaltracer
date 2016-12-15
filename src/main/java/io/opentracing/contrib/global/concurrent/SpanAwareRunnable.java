@@ -1,8 +1,8 @@
 package io.opentracing.contrib.global.concurrent;
 
 import io.opentracing.Span;
-import io.opentracing.contrib.global.ActiveSpanManager;
-import io.opentracing.contrib.global.ActiveSpanManager.SpanDeactivator;
+import io.opentracing.contrib.activespan.ActiveSpanManager;
+import io.opentracing.contrib.activespan.ActiveSpanManager.SpanDeactivator;
 
 /**
  * {@link Runnable} wrapper that will execute with the {@link ActiveSpanManager#activeSpan() active span}

@@ -2,7 +2,7 @@ package io.opentracing.contrib.global.concurrent;
 
 import io.opentracing.NoopSpan;
 import io.opentracing.Span;
-import io.opentracing.contrib.global.ActiveSpanManager;
+import io.opentracing.contrib.activespan.ActiveSpanManager;
 import io.opentracing.contrib.global.GlobalTracer;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;

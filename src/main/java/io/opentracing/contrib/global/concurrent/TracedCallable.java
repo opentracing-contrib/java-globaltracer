@@ -1,7 +1,7 @@
 package io.opentracing.contrib.global.concurrent;
 
 import io.opentracing.Span;
-import io.opentracing.contrib.global.ActiveSpanManager;
+import io.opentracing.contrib.activespan.ActiveSpanManager;
 import io.opentracing.contrib.global.GlobalTracer;
 
 import java.util.concurrent.Callable;
