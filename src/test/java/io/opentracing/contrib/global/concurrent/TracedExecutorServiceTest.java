@@ -1,5 +1,6 @@
 package io.opentracing.contrib.global.concurrent;
 
+import io.opentracing.NoopSpan;
 import io.opentracing.Span;
 import io.opentracing.contrib.global.ActiveSpanManager;
 import io.opentracing.contrib.global.GlobalTracer;
@@ -27,7 +28,7 @@ public class TracedExecutorServiceTest {
 
     @Before
     public void setUp() {
-        tracedThreadpool = TracedExecutors.newCachedThreadPool();
+        tracedThreadpool = SpanAwareExecutors.newCachedThreadPool();
         // Reset the (global) MockTracer.
         assertThat(unwrap(GlobalTracer.tracer()), is(instanceOf(MockTracer.class)));
         ((MockTracer) unwrap(GlobalTracer.tracer())).reset();
@@ -66,7 +67,8 @@ public class TracedExecutorServiceTest {
         }
         future.get(); // block until background tasks completes.
 
-        assertThat(ActiveSpanManager.activeSpan(), is(nullValue())); // spans should be closed again.
+        assertThat(ActiveSpanManager.activeSpan(), is(instanceOf(NoopSpan.class)));
+        
         assertThat(unwrap(GlobalTracer.tracer()), is(instanceOf(MockTracer.class)));
         final MockTracer mockTracer = (MockTracer) unwrap(GlobalTracer.tracer());
 

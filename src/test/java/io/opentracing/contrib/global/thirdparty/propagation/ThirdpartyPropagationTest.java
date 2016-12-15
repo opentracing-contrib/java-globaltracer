@@ -1,5 +1,6 @@
 package io.opentracing.contrib.global.thirdparty.propagation;
 
+import io.opentracing.NoopSpan;
 import io.opentracing.NoopTracer;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
@@ -8,7 +9,6 @@ import io.opentracing.contrib.global.GlobalTracer;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import nl.talsmasoftware.context.executors.ContextAwareExecutorService;
-import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -79,7 +79,7 @@ public class ThirdpartyPropagationTest {
         }
         future.get(); // block until background tasks completes.
 
-        MatcherAssert.assertThat(ActiveSpanManager.activeSpan(), is(nullValue()));
+        assertThat(ActiveSpanManager.activeSpan(), is(instanceOf(NoopSpan.class)));
 
         List<MockSpan> finishedSpans = mockTracer.finishedSpans();
         assertThat(finishedSpans, hasSize(2));

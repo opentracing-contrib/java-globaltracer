@@ -1,8 +1,8 @@
 package io.opentracing.contrib.global;
 
+import io.opentracing.NoopSpan;
 import io.opentracing.Span;
 
-import java.io.Closeable;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
@@ -37,10 +37,6 @@ public abstract class ActiveSpanManager {
      * Interface to deactivate an active {@link Span} with.
      */
     public interface SpanDeactivator {
-        /**
-         * Deactivates the {@link #activate(Span) active Span} this object was returned for.
-         */
-        void deactivate();
     }
 
     /**
@@ -81,28 +77,57 @@ public abstract class ActiveSpanManager {
     }
 
     /**
-     * Static method to return the currently active global {@link Span}.<br>
-     * There is no guarantee that there is an active {@link Span} in all situations.
+     * Return the active {@link Span}.
      *
-     * @return The currently active global Span, or <code>null</code> if there is no Span currently active.
+     * @return The active Span, or the <code>NoopSpan</code> if there is no active span.
      */
     public static Span activeSpan() {
-        return getInstance().getActiveSpan();
+        try {
+            Span activeSpan = getInstance().getActiveSpan();
+            if (activeSpan != null) return activeSpan;
+        } catch (Exception activeSpanException) {
+            LOGGER.log(Level.WARNING, "Could not obtain active span.", activeSpanException);
+        }
+        return NoopSpan.INSTANCE;
     }
 
     /**
-     * This method makes the specified span the <em>globally active</em> span within the global span manager.
+     * Makes span the <em>active span</em> within the running process.
      * <p>
-     * It is left to the actual implementation how to deal with <code>null</code> spans.
-     * The default <code>ThreadLocal</code>-based implementation temporarily <em>suspends</em> the span activation,
-     * meaning no {@link #activeSpan()} is returned until the {@link Closeable} is closed.
+     * Any exception thrown by the {@link #setActiveSpan(Span) implementation} is logged and will return
+     * no {@link SpanDeactivator} (<code>null</code>) because tracing code must not break application functionality.
      *
-     * @param span The span to become the globally active span.
-     * @return The object that will return the <em>active</em> span back to the current state when closed.
+     * @param span The span to become the active span.
+     * @return The object that will restore any currently <em>active</em> deactivated.
      * @see #activeSpan()
+     * @see #deactivate(SpanDeactivator)
      */
     public static SpanDeactivator activate(Span span) {
-        return getInstance().setActiveSpan(span);
+        try {
+            if (span == null) span = NoopSpan.INSTANCE;
+            return getInstance().setActiveSpan(span);
+        } catch (Exception activationException) {
+            LOGGER.log(Level.WARNING, "Could not activate {0}.", new Object[]{span, activationException});
+            return null;
+        }
+    }
+
+    /**
+     * Invokes the given {@link SpanDeactivator} which should normally reactivate the parent of the <em>active span</em>
+     * within the running process.
+     * <p>
+     * Any exception thrown by the implementation is logged and swallowed because tracing code must not break
+     * application functionality.
+     *
+     * @param deactivator The deactivator that was received upon span activation.
+     * @see #activate(Span)
+     */
+    public static void deactivate(SpanDeactivator deactivator) {
+        if (deactivator != null) try {
+            getInstance().deactivateSpan(deactivator);
+        } catch (Exception deactivationException) {
+            LOGGER.log(Level.WARNING, "Could not deactivate {0}.", new Object[]{deactivator, deactivationException});
+        }
     }
 
     /**
@@ -115,14 +140,22 @@ public abstract class ActiveSpanManager {
      * or <code>false</code> if there were no active spans left.
      */
     public static boolean clearActiveSpans() {
-        return getInstance().clearAllActiveSpans();
+        try {
+            return getInstance().clearAllActiveSpans();
+        } catch (Exception clearException) {
+            LOGGER.log(Level.WARNING, "Could not clear active spans.", clearException);
+            return false;
+        }
     }
 
-    // The abstract methods to be implemented by the span manager. // TODO JavaDoc
+    // The abstract methods to be implemented by the span manager.
+    // TODO JavaDoc
 
     protected abstract Span getActiveSpan();
 
     protected abstract SpanDeactivator setActiveSpan(Span span);
+
+    protected abstract void deactivateSpan(SpanDeactivator deactivator);
 
     protected abstract boolean clearAllActiveSpans();
 

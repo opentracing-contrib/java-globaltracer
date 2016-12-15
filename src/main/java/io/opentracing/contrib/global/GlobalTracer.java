@@ -1,7 +1,12 @@
 package io.opentracing.contrib.global;
 
 import io.opentracing.NoopTracerFactory;
+import io.opentracing.Span;
 import io.opentracing.Tracer;
+import io.opentracing.contrib.global.concurrent.SpanAwareCallable;
+import io.opentracing.contrib.global.concurrent.SpanAwareRunnable;
+import io.opentracing.contrib.global.concurrent.TracedCallable;
+import io.opentracing.contrib.global.concurrent.TracedRunnable;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
@@ -64,12 +69,16 @@ public final class GlobalTracer {
     }
 
     /**
-     * This method returns the {@link #register(Tracer) explicitly registered} Tracer implementation,
-     * or attempts to lazily load the available implementation according to the standard Java
-     * {@link java.util.ServiceLoader ServiceLoader}.
+     * Returns the {@link #register(Tracer) explicitly registered} Tracer implementation.
      * <p>
-     * If no delegate is found, the {@link io.opentracing.NoopTracer NoopTracer} will be returned.
-     * In this case no {@link ActiveSpanManager#activeSpan() globally-active spans} will be created.
+     * If no explicit registration exists, the Java {@link java.util.ServiceLoader ServiceLoader} is used to load
+     * the {@link Tracer} service implementation.<br>
+     * If zero or more than one service implementations are found,
+     * the {@link io.opentracing.NoopTracer NoopTracer} will be returned.
+     * <p>
+     * Spans created from Tracers will automatically become the
+     * {@link ActiveSpanManager#activeSpan() active span} when started and get
+     * {@link ActiveSpanManager#deactivate(ActiveSpanManager.SpanDeactivator) deactivated} when finished or closed.
      *
      * @return The non-<code>null</code> global tracer to use.
      */
@@ -85,6 +94,66 @@ public final class GlobalTracer {
         }
         LOGGER.log(Level.FINEST, "Global tracer: {0}.", instance);
         return instance;
+    }
+
+    /**
+     * Wraps the {@link Callable} to execute with the {@link ActiveSpanManager#activeSpan() active span}
+     * from the scheduling thread.
+     *
+     * @param callable The callable to wrap.
+     * @param <V>      The return type of the wrapped call.
+     * @return The wrapped call executing with the active span of the scheduling process.
+     * @see #traced(Callable)
+     */
+    public static <V> SpanAwareCallable<V> spanAware(Callable<V> callable) {
+        return SpanAwareCallable.of(callable);
+    }
+
+    /**
+     * Wraps the {@link Runnable} to execute with the {@link ActiveSpanManager#activeSpan() active span}
+     * from the scheduling thread.
+     *
+     * @param runnable The runnable to wrap.
+     * @return The wrapped runnable executing with the active span of the scheduling process.
+     * @see #traced(Runnable)
+     */
+    public static SpanAwareRunnable spanAware(Runnable runnable) {
+        return SpanAwareRunnable.of(runnable);
+    }
+
+    /**
+     * Wraps the {@link Callable} to execute with the {@link ActiveSpanManager#activeSpan() active span}
+     * from the scheduling thread.
+     * <p>
+     * Furthermore, a new {@link Span} will be started <em>as child of this active span</em>
+     * around the call if a non-<code>null</code> {@link TracedCallable#withOperationName(String) operationName}
+     * is provided.
+     *
+     * @param callable The callable to wrap.
+     * @param <V>      The return type of the wrapped call.
+     * @return The wrapped call.
+     * @see #spanAware(Callable)
+     * @see TracedCallable#withOperationName(String)
+     */
+    public static <V> TracedCallable<V> traced(Callable<V> callable) {
+        return TracedCallable.of(callable);
+    }
+
+    /**
+     * Wraps the {@link Runnable} to execute with the {@link ActiveSpanManager#activeSpan() active span}
+     * from the scheduling thread.
+     * <p>
+     * Furthermore, a new {@link Span} will be started <em>as child of this active span</em>
+     * around the call if a non-<code>null</code> {@link TracedCallable#withOperationName(String) operationName}
+     * is provided.
+     *
+     * @param runnable The runnable to wrap.
+     * @return The wrapped call.
+     * @see #spanAware(Runnable)
+     * @see TracedRunnable#withOperationName(String)
+     */
+    public static TracedRunnable traced(Runnable runnable) {
+        return TracedRunnable.of(runnable);
     }
 
 }

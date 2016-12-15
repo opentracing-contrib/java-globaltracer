@@ -10,37 +10,37 @@ import java.util.concurrent.*;
 
 /**
  * {@link ExecutorService} wrapper that will propagate the {@link ActiveSpanManager#activeSpan() active span}
- * into the calls that are executed.
+ * into the calls that are scheduled.
  *
  * @author Sjoerd Talsma
  */
-public class TracedExecutorService implements ExecutorService {
+public class SpanAwareExecutorService implements ExecutorService {
     protected final ExecutorService delegate;
 
-    protected TracedExecutorService(ExecutorService delegate) {
+    protected SpanAwareExecutorService(ExecutorService delegate) {
         if (delegate == null) throw new NullPointerException("Delegate executor service is <null>.");
         this.delegate = delegate;
     }
 
     public static ExecutorService traced(final ExecutorService delegate) {
-        return delegate instanceof TracedExecutorService ? (TracedExecutorService) delegate
-                : new TracedExecutorService(delegate);
+        return delegate instanceof SpanAwareExecutorService ? (SpanAwareExecutorService) delegate
+                : new SpanAwareExecutorService(delegate);
     }
 
     public void execute(Runnable command) {
-        delegate.execute(TracedRunnable.of(command));
+        delegate.execute(SpanAwareRunnable.of(command));
     }
 
     public Future<?> submit(Runnable task) {
-        return delegate.submit(TracedRunnable.of(task));
+        return delegate.submit(SpanAwareRunnable.of(task));
     }
 
     public <T> Future<T> submit(Runnable task, T result) {
-        return delegate.submit(TracedRunnable.of(task), result);
+        return delegate.submit(SpanAwareRunnable.of(task), result);
     }
 
     public <T> Future<T> submit(Callable<T> task) {
-        return delegate.submit(TracedCallable.of(task));
+        return delegate.submit(SpanAwareCallable.of(task));
     }
 
     public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException {
@@ -62,7 +62,7 @@ public class TracedExecutorService implements ExecutorService {
     }
 
     /**
-     * Obtains the currently active span and returns {@link TracedCallable} objects that run with this active span as
+     * Obtains the currently active span and returns {@link SpanAwareCallable} objects that run with this active span as
      * global parent.
      *
      * @param tasks The tasks to be scheduled.
@@ -74,7 +74,7 @@ public class TracedExecutorService implements ExecutorService {
         final Collection<Callable<T>> result = new ArrayList<Callable<T>>(tasks.size());
         final Span activeSpan = ActiveSpanManager.activeSpan();
         for (Callable<T> task : tasks) {
-            result.add(new TracedCallable<T>(task, activeSpan));
+            result.add(new SpanAwareCallable<T>(task, activeSpan));
         }
         return result;
     }

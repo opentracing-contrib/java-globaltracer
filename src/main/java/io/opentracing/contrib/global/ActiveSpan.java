@@ -7,8 +7,6 @@ import io.opentracing.contrib.global.ActiveSpanManager.SpanDeactivator;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Implementation of an 'active span'.<br>
@@ -18,7 +16,6 @@ import java.util.logging.Logger;
  * @author Sjoerd Talsma
  */
 final class ActiveSpan implements Span {
-    private static final Logger LOGGER = Logger.getLogger(ActiveSpan.class.getName());
 
     protected Span delegate;
     private final SpanDeactivator deactivator;
@@ -30,20 +27,31 @@ final class ActiveSpan implements Span {
         this.deactivator = deactivator;
     }
 
+    /**
+     * Replaces the {@link #delegate} Span by a delegated-method result.
+     * <p>
+     * For <code>null</code> or {@link NoopSpan} the active span builder short-circuits to the noop Span,
+     * effectively disabling further tracing.
+     *
+     * @param span The span returned from the delegate (normally '== delegate').
+     * @return Either this re-wrapped ActiveSpan or the NoopSpan.
+     */
     protected Span rewrap(Span span) {
         if (span == null || span instanceof NoopSpan) return NoopSpan.INSTANCE;
         this.delegate = span;
         return this;
     }
 
-    void deactivate() {
-        if (deactivated.compareAndSet(false, true)) try {
-            deactivator.deactivate();
-        } catch (Exception deactivationException) {
-            LOGGER.log(Level.WARNING, "Exception deactivating {0}.", new Object[]{this, deactivationException});
-        }
+    /**
+     * Deactivates this active span (only once).
+     */
+    private void deactivate() {
+        if (deactivated.compareAndSet(false, true)) ActiveSpanManager.deactivate(deactivator);
     }
 
+    /**
+     * Finishes the delegate and deactivates this active span.
+     */
     public void finish() {
         try {
             delegate.finish();
@@ -52,6 +60,9 @@ final class ActiveSpan implements Span {
         }
     }
 
+    /**
+     * Finishes the delegate and deactivates this active span.
+     */
     public void finish(long finishMicros) {
         try {
             delegate.finish(finishMicros);
@@ -60,6 +71,9 @@ final class ActiveSpan implements Span {
         }
     }
 
+    /**
+     * Finishes the delegate and deactivates this active span.
+     */
     public void close() {
         try {
             delegate.close();

@@ -4,24 +4,24 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
-import static io.opentracing.contrib.global.concurrent.TracedExecutorService.traced;
+import static io.opentracing.contrib.global.concurrent.SpanAwareExecutorService.traced;
 
 /**
  * @author Sjoerd Talsma
  * @navassoc - delegatesTo - Executors
  */
-public final class TracedExecutors {
+public final class SpanAwareExecutors {
 
     /**
      * Private constructor to avoid instantiation of this utility class.
      */
-    private TracedExecutors() {
+    private SpanAwareExecutors() {
         throw new UnsupportedOperationException();
     }
 
     /**
      * This method returns a {@link Executors#newFixedThreadPool(int) fixed threadpool} that propagates
-     * the active span into the background threads.
+     * the active span into the started threads.
      *
      * @param nThreads the number of threads in the pool
      * @return the newly created thread pool
@@ -33,7 +33,7 @@ public final class TracedExecutors {
 
     /**
      * This method returns a {@link Executors#newFixedThreadPool(int, ThreadFactory) fixed threadpool} that propagates
-     * the active span into the background threads.
+     * the active span into the started threads.
      *
      * @param nThreads      the number of threads in the pool
      * @param threadFactory the factory to use when creating new threads
@@ -46,7 +46,7 @@ public final class TracedExecutors {
 
     /**
      * This method returns a {@link Executors#newSingleThreadExecutor() single-threaded executor} that propagates
-     * the active span into the background thread.
+     * the active span into the started thread.
      *
      * @return the newly created single-theaded executor
      * @see Executors#newSingleThreadExecutor()
@@ -57,7 +57,7 @@ public final class TracedExecutors {
 
     /**
      * This method returns a {@link Executors#newSingleThreadExecutor(ThreadFactory) single-threaded executor}
-     * that propagates the active span into the background thread.
+     * that propagates the active span into the started thread.
      *
      * @param threadFactory the factory to use when creating new threads
      * @return the newly created single-theaded executor
@@ -69,7 +69,7 @@ public final class TracedExecutors {
 
     /**
      * This method returns a {@link Executors#newCachedThreadPool() cached threadpool} that propagates
-     * the active span into the background threads.
+     * the active span into the started threads.
      *
      * @return the newly created thread pool
      * @see Executors#newCachedThreadPool()
@@ -80,7 +80,7 @@ public final class TracedExecutors {
 
     /**
      * This method returns a {@link Executors#newCachedThreadPool(ThreadFactory) cached threadpool} that propagates
-     * the active span into the background threads.
+     * the active span into the started threads.
      *
      * @param threadFactory the factory to use when creating new threads
      * @return the newly created thread pool

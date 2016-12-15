@@ -1,6 +1,5 @@
 package io.opentracing.contrib.global.thirdparty.propagation;
 
-import io.opentracing.NoopSpan;
 import io.opentracing.Span;
 import io.opentracing.contrib.global.ActiveSpanManager;
 import io.opentracing.contrib.global.ActiveSpanManager.SpanDeactivator;
@@ -24,28 +23,21 @@ public class OpentracingTestContextManager implements ContextManager<Span> {
             }
 
             public void close() {
-                try {
-                    deactivator.deactivate();
-                } catch (Exception closeException) {
-                    throw new IllegalStateException("Exception while deactivating global span.", closeException);
-                }
+                ActiveSpanManager.deactivate(deactivator);
             }
         };
     }
 
     public Context<Span> getActiveContext() {
         final Span activeSpan = ActiveSpanManager.activeSpan();
-        return activeSpan == null || activeSpan instanceof NoopSpan ? null : new Context<Span>() {
+        return new Context<Span>() {
             public Span getValue() {
                 return activeSpan;
             }
 
             public void close() {
-                if (activeSpan != null) try {
-                    activeSpan.close();
-                } catch (Exception closeException) {
-                    throw new IllegalStateException("Exception while closing the active span.", closeException);
-                }
+                throw new UnsupportedOperationException(
+                        "Context not managed by ourselves, but delegated to ActiveSpanManager.");
             }
         };
     }

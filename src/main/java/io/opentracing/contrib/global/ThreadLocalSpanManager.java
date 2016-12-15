@@ -37,6 +37,10 @@ final class ThreadLocalSpanManager extends ActiveSpanManager {
         return managedSpan;
     }
 
+    public void deactivateSpan(SpanDeactivator deactivator) {
+        ((ManagedSpan) deactivator).deactivate();
+    }
+
     public boolean clearAllActiveSpans() {
         final boolean cleared = ACTIVE.get() != null;
         ACTIVE.remove();
@@ -46,17 +50,17 @@ final class ThreadLocalSpanManager extends ActiveSpanManager {
     private static class ManagedSpan implements SpanDeactivator {
         private final ManagedSpan parent = ACTIVE.get();
         private final Span span;
-        private final AtomicBoolean closed = new AtomicBoolean(false);
+        private final AtomicBoolean deactivated = new AtomicBoolean(false);
 
         private ManagedSpan(final Span span) {
             this.span = span;
         }
 
         public void deactivate() {
-            if (closed.compareAndSet(false, true)) {
+            if (deactivated.compareAndSet(false, true)) {
                 ManagedSpan current = ACTIVE.get();
                 if (this == current) {
-                    while (current != null && current.closed.get()) {
+                    while (current != null && current.deactivated.get()) {
                         current = current.parent;
                     }
                     if (current == null) ACTIVE.remove();
@@ -74,7 +78,7 @@ final class ThreadLocalSpanManager extends ActiveSpanManager {
 
         @Override
         public String toString() {
-            return closed.get() ? "ManagedSpan{closed}" : "ManagedSpan{" + span + '}';
+            return deactivated.get() ? "ManagedSpan{closed}" : "ManagedSpan{" + span + '}';
         }
     }
 }

@@ -2,86 +2,69 @@ package io.opentracing.contrib.global.concurrent;
 
 import io.opentracing.Span;
 import io.opentracing.contrib.global.ActiveSpanManager;
-import io.opentracing.contrib.global.ActiveSpanManager.SpanDeactivator;
+import io.opentracing.contrib.global.GlobalTracer;
 
 import java.util.concurrent.Callable;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import static io.opentracing.contrib.global.concurrent.AddSuppressedSupport.addSuppressedOrLog;
 
 /**
- * {@link Callable} wrapper that will propagate the {@link ActiveSpanManager#activeSpan() active span} as global parent
- * span in the call that needs to be executed.
+ * Convenience {@link Callable} wrapper that will execute with the {@link ActiveSpanManager#activeSpan() active span}
+ * of the scheduling process.
+ * <p>
+ * Furthermore, a new {@link Span} will be started <em>as child of this active span</em>
+ * around the call if a non-<code>null</code> {@link #withOperationName(String) operationName} is provided.
  *
  * @author Sjoerd Talsma
  */
-public class TracedCallable<T> implements Callable<T> {
-    private static final Logger LOGGER = Logger.getLogger(TracedCallable.class.getName());
+public class TracedCallable<V> extends SpanAwareCallable<V> {
 
-    protected final Callable<T> delegate;
-    private final Span parentSpan;
-
-    protected TracedCallable(Callable<T> delegate, Span parentSpan) {
-        if (delegate == null) throw new NullPointerException("Callable delegate is <null>.");
-        this.delegate = delegate;
-        this.parentSpan = parentSpan;
+    protected TracedCallable(Callable<V> delegate, Span activeSpanOfScheduler) {
+        super(new NewSpanCallable<V>(delegate), activeSpanOfScheduler);
     }
 
-    /**
-     * Creates a new traced callable that will execute with the currently
-     * {@link ActiveSpanManager#activeSpan() active span} as active parent span in the new process.
-     *
-     * @param delegate The delegate callable to execute (required, non-<code>null</code>).
-     * @param <T>      The result type of the call.
-     * @return The traced callable that will propagate the currently active span to the new thread.
-     * @see ActiveSpanManager#activeSpan()
-     */
     public static <T> TracedCallable<T> of(Callable<T> delegate) {
         return new TracedCallable<T>(delegate, ActiveSpanManager.activeSpan());
     }
 
-    /**
-     * This method allows the caller to override the active span to use in the new thread.
-     * <p>
-     * <em>Please note:</em> it is <strong>not</strong> necessary to call this method with the
-     * {@link ActiveSpanManager#activeSpan() current active span} as that is used {@link #of(Callable) by default}.
-     *
-     * @param parentSpan The span to use as active parent in the new thread.
-     * @return A new callable object that will use the specified parent span.
-     * @see #of(Callable)
-     */
-    public TracedCallable<T> withParent(Span parentSpan) {
-        return new TracedCallable<T>(delegate, parentSpan);
+    public TracedCallable<V> withOperationName(String operationName) {
+        ((NewSpanCallable<?>) delegate).operationName = operationName;
+        return this;
     }
 
-    /**
-     * Performs the delegate call with the specified parent span.
-     *
-     * @return The result from the original call.
-     * @throws Exception if the original call threw an exception.
-     */
-    public T call() throws Exception {
-        final SpanDeactivator parentContext = tryActivate(parentSpan);
-        try {
-            return delegate.call();
-        } finally {
-            tryDeactivate(parentContext);
+    private static class NewSpanCallable<V> implements Callable<V> {
+        private final Callable<V> delegate;
+
+        private String operationName;
+
+        private NewSpanCallable(Callable<V> delegate) {
+            if (delegate == null) throw new NullPointerException("Callable delegate is <null>.");
+            this.delegate = delegate;
         }
-    }
 
-    static SpanDeactivator tryActivate(Span span) {
-        try {
-            return ActiveSpanManager.activate(span);
-        } catch (RuntimeException activationException) {
-            LOGGER.log(Level.WARNING, "Could not activate span {0}.", new Object[]{span, activationException});
-            return null;
-        }
-    }
+        public V call() throws Exception {
+            Span newSpan = null;
+            Exception callException = null, closeException = null;
+            try {
 
-    static void tryDeactivate(SpanDeactivator deactivator) {
-        if (deactivator != null) try {
-            deactivator.deactivate();
-        } catch (Exception deactivationException) {
-            LOGGER.log(Level.WARNING, "Could not deactivate {0}.", new Object[]{deactivator, deactivationException});
+                if (operationName != null) {
+                    newSpan = GlobalTracer.tracer()
+                            .buildSpan(operationName)
+                            .asChildOf(ActiveSpanManager.activeSpan())
+                            .start();
+                }
+                return delegate.call();
+
+            } catch (Exception callEx) {
+                callException = callEx;
+            } finally {
+                if (newSpan != null) try {
+                    newSpan.close();
+                } catch (Exception closeEx) {
+                    closeException = closeEx;
+                }
+            }
+            throw addSuppressedOrLog(callException, closeException, "Exception closing new span.");
         }
     }
 

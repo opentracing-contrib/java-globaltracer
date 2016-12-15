@@ -28,14 +28,13 @@ final class ActiveSpanBuilder implements SpanBuilder {
     }
 
     /**
-     * Replaces the {@link #delegate} SpanBuilder by an delegated-method result.
+     * Replaces the {@link #delegate} SpanBuilder by a delegated-method result.
      * <p>
-     * If the method result is <code>null</code> or a {@link NoopSpanBuilder},
-     * the method short-circuits to the {@link NoopSpanBuilder#INSTANCE},
-     * bypassing this ActiveSpanBuilder from further calls.
+     * For <code>null</code> or {@link NoopSpanBuilder} the active span builder short-circuits to the noop SpanBuilder,
+     * similar to the <code>AbstractSpanBuilder</code> implementation.
      *
      * @param spanBuilder The builder returned from the delegate (normally '== delegate').
-     * @return Either this re-wrapped DelegateSpanBuilder or the NoopSpanBuilder.
+     * @return Either this re-wrapped ActiveSpanBuilder or the NoopSpanBuilder.
      */
     SpanBuilder rewrap(SpanBuilder spanBuilder) {
         if (spanBuilder == null || spanBuilder instanceof NoopSpanBuilder) return NoopSpanBuilder.INSTANCE;
