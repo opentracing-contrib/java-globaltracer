@@ -59,6 +59,9 @@ final class ActiveSpanBuilder implements SpanBuilder {
     // All other methods are forwarded to the delegate SpanBuilder.
 
     public SpanBuilder asChildOf(SpanContext parent) {
+        if (parent instanceof ActiveSpanBuilder) {
+            parent = ((ActiveSpanBuilder) parent).delegate;
+        }
         return rewrap(delegate.asChildOf(parent));
     }
 
@@ -68,6 +71,9 @@ final class ActiveSpanBuilder implements SpanBuilder {
     }
 
     public SpanBuilder addReference(String referenceType, SpanContext referencedContext) {
+        if (referencedContext instanceof ActiveSpanBuilder) {
+            referencedContext = ((ActiveSpanBuilder) referencedContext).delegate;
+        }
         return rewrap(delegate.addReference(referenceType, referencedContext));
     }
 
