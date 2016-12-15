@@ -11,8 +11,6 @@ This class:
     a `NoopSpan` instead.
  2. Modifications to the _active span_ can be made through the `activate` 
     and `deactivate` methods.
-    Note that Spans created through the GlobalTracer.tracer() instance will 
-    activate and deactivate themselves.
  3. Utility `spanAware()` methods to create 'span aware' Runnable and Callable instances
     that run with the _active span_ from the scheduling thread.
 
