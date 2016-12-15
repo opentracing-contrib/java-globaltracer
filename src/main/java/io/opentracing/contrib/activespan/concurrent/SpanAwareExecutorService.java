@@ -1,4 +1,4 @@
-package io.opentracing.contrib.global.concurrent;
+package io.opentracing.contrib.activespan.concurrent;
 
 import io.opentracing.Span;
 import io.opentracing.contrib.activespan.ActiveSpanManager;
@@ -22,7 +22,7 @@ public class SpanAwareExecutorService implements ExecutorService {
         this.delegate = delegate;
     }
 
-    public static ExecutorService traced(final ExecutorService delegate) {
+    public static ExecutorService wrap(final ExecutorService delegate) {
         return delegate instanceof SpanAwareExecutorService ? (SpanAwareExecutorService) delegate
                 : new SpanAwareExecutorService(delegate);
     }
@@ -44,32 +44,31 @@ public class SpanAwareExecutorService implements ExecutorService {
     }
 
     public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException {
-        return delegate.invokeAll(tracedTasks(tasks));
+        return delegate.invokeAll(spanAwareTasks(tasks));
     }
 
     public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
             throws InterruptedException {
-        return delegate.invokeAll(tracedTasks(tasks), timeout, unit);
+        return delegate.invokeAll(spanAwareTasks(tasks), timeout, unit);
     }
 
     public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException {
-        return delegate.invokeAny(tracedTasks(tasks));
+        return delegate.invokeAny(spanAwareTasks(tasks));
     }
 
     public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
-        return delegate.invokeAny(tracedTasks(tasks), timeout, unit);
+        return delegate.invokeAny(spanAwareTasks(tasks), timeout, unit);
     }
 
     /**
-     * Obtains the currently active span and returns {@link SpanAwareCallable} objects that run with this active span as
-     * global parent.
+     * Wraps {@link SpanAwareCallable} objects.
      *
      * @param tasks The tasks to be scheduled.
      * @param <T>   The common type of all scheduled tasks.
-     * @return A new collection of 'traced' callable objects that manage the parent span.
+     * @return A new collection of 'span aware' callable objects that run with the active span of the scheduling service.
      */
-    protected <T> Collection<? extends Callable<T>> tracedTasks(final Collection<? extends Callable<T>> tasks) {
+    protected <T> Collection<? extends Callable<T>> spanAwareTasks(final Collection<? extends Callable<T>> tasks) {
         if (tasks == null) throw new NullPointerException("Collection of scheduled tasks is <null>.");
         final Collection<Callable<T>> result = new ArrayList<Callable<T>>(tasks.size());
         final Span activeSpan = ActiveSpanManager.activeSpan();

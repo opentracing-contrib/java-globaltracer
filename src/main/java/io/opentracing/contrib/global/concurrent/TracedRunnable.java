@@ -2,6 +2,7 @@ package io.opentracing.contrib.global.concurrent;
 
 import io.opentracing.Span;
 import io.opentracing.contrib.activespan.ActiveSpanManager;
+import io.opentracing.contrib.activespan.concurrent.SpanAwareRunnable;
 import io.opentracing.contrib.global.GlobalTracer;
 
 import static io.opentracing.contrib.global.concurrent.AddSuppressedSupport.addSuppressedOrLog;

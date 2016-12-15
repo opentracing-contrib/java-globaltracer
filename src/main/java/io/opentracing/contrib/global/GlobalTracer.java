@@ -4,8 +4,6 @@ import io.opentracing.NoopTracerFactory;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.contrib.activespan.ActiveSpanManager;
-import io.opentracing.contrib.global.concurrent.SpanAwareCallable;
-import io.opentracing.contrib.global.concurrent.SpanAwareRunnable;
 import io.opentracing.contrib.global.concurrent.TracedCallable;
 import io.opentracing.contrib.global.concurrent.TracedRunnable;
 
@@ -97,31 +95,6 @@ public final class GlobalTracer {
     /**
      * Wraps the {@link Callable} to execute with the {@link ActiveSpanManager#activeSpan() active span}
      * from the scheduling thread.
-     *
-     * @param callable The callable to wrap.
-     * @param <V>      The return type of the wrapped call.
-     * @return The wrapped call executing with the active span of the scheduling process.
-     * @see #traced(Callable)
-     */
-    public static <V> SpanAwareCallable<V> spanAware(Callable<V> callable) {
-        return SpanAwareCallable.of(callable);
-    }
-
-    /**
-     * Wraps the {@link Runnable} to execute with the {@link ActiveSpanManager#activeSpan() active span}
-     * from the scheduling thread.
-     *
-     * @param runnable The runnable to wrap.
-     * @return The wrapped runnable executing with the active span of the scheduling process.
-     * @see #traced(Runnable)
-     */
-    public static SpanAwareRunnable spanAware(Runnable runnable) {
-        return SpanAwareRunnable.of(runnable);
-    }
-
-    /**
-     * Wraps the {@link Callable} to execute with the {@link ActiveSpanManager#activeSpan() active span}
-     * from the scheduling thread.
      * <p>
      * Furthermore, a new {@link Span} will be started <em>as child of this active span</em>
      * around the call if a non-<code>null</code> {@link TracedCallable#withOperationName(String) operationName}
@@ -130,7 +103,7 @@ public final class GlobalTracer {
      * @param callable The callable to wrap.
      * @param <V>      The return type of the wrapped call.
      * @return The wrapped call.
-     * @see #spanAware(Callable)
+     * @see ActiveSpanManager#spanAware(Callable)
      * @see TracedCallable#withOperationName(String)
      */
     public static <V> TracedCallable<V> traced(Callable<V> callable) {
@@ -147,7 +120,7 @@ public final class GlobalTracer {
      *
      * @param runnable The runnable to wrap.
      * @return The wrapped call.
-     * @see #spanAware(Runnable)
+     * @see ActiveSpanManager#spanAware(Runnable)
      * @see TracedRunnable#withOperationName(String)
      */
     public static TracedRunnable traced(Runnable runnable) {

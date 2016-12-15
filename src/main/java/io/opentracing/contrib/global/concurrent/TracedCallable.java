@@ -2,6 +2,7 @@ package io.opentracing.contrib.global.concurrent;
 
 import io.opentracing.Span;
 import io.opentracing.contrib.activespan.ActiveSpanManager;
+import io.opentracing.contrib.activespan.concurrent.SpanAwareCallable;
 import io.opentracing.contrib.global.GlobalTracer;
 
 import java.util.concurrent.Callable;

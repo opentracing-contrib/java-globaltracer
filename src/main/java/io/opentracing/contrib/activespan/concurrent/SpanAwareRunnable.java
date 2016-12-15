@@ -1,4 +1,4 @@
-package io.opentracing.contrib.global.concurrent;
+package io.opentracing.contrib.activespan.concurrent;
 
 import io.opentracing.Span;
 import io.opentracing.contrib.activespan.ActiveSpanManager;

@@ -2,9 +2,12 @@ package io.opentracing.contrib.activespan;
 
 import io.opentracing.NoopSpan;
 import io.opentracing.Span;
+import io.opentracing.contrib.activespan.concurrent.SpanAwareCallable;
+import io.opentracing.contrib.activespan.concurrent.SpanAwareRunnable;
 
 import java.util.Iterator;
 import java.util.ServiceLoader;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,7 +38,7 @@ public abstract class ActiveSpanManager {
     }
 
     /**
-     * Overridable singleton instance of the global span manager.
+     * Overridable singleton instance of the active span manager.
      */
     private static final AtomicReference<ActiveSpanManager> INSTANCE = new AtomicReference<ActiveSpanManager>();
 
@@ -136,6 +139,30 @@ public abstract class ActiveSpanManager {
             return false;
         }
     }
+
+    /**
+     * Wraps the {@link Callable} to execute with the {@link ActiveSpanManager#activeSpan() active span}
+     * from the scheduling thread.
+     *
+     * @param callable The callable to wrap.
+     * @param <V>      The return type of the wrapped call.
+     * @return The wrapped call executing with the active span of the scheduling process.
+     */
+    public static <V> SpanAwareCallable<V> spanAware(Callable<V> callable) {
+        return SpanAwareCallable.of(callable);
+    }
+
+    /**
+     * Wraps the {@link Runnable} to execute with the {@link ActiveSpanManager#activeSpan() active span}
+     * from the scheduling thread.
+     *
+     * @param runnable The runnable to wrap.
+     * @return The wrapped runnable executing with the active span of the scheduling process.
+     */
+    public static SpanAwareRunnable spanAware(Runnable runnable) {
+        return SpanAwareRunnable.of(runnable);
+    }
+
 
     // The abstract methods to be implemented by the span manager.
     // TODO JavaDoc

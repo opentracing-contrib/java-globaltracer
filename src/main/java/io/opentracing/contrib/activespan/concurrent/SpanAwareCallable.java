@@ -1,4 +1,4 @@
-package io.opentracing.contrib.global.concurrent;
+package io.opentracing.contrib.activespan.concurrent;
 
 import io.opentracing.Span;
 import io.opentracing.contrib.activespan.ActiveSpanManager;
@@ -29,9 +29,8 @@ public class SpanAwareCallable<T> implements Callable<T> {
      *
      * @param delegate The delegate callable to execute (required, non-<code>null</code>).
      * @param <T>      The result type of the call.
-     * @return The traced callable that will propagate the currently active span to the new thread.
+     * @return The 'span aware' callable that will propagate the currently active span to the new thread.
      * @see ActiveSpanManager#activeSpan()
-     * @see TracedCallable#of(Callable)
      */
     public static <T> SpanAwareCallable<T> of(Callable<T> delegate) {
         return new SpanAwareCallable<T>(delegate, ActiveSpanManager.activeSpan());
