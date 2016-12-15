@@ -1,43 +1,35 @@
 # java-globaltracer
-Global ThreadLocal Span for implicit propagation, delegating to another Tracer implementation.
+Global Tracer, forwarding to another Tracer implementation.
 
-This library provides two main utiltiy classes; `GlobalTracer` and `ActiveSpanManager`.
-The first is intended for used by application code and library developers,
-where the latter is more intended for boundary filters and `Tracer` implementations.
+This library provides two utility classes `GlobalTracer` and `ActiveSpanManager`:
 
 ## GlobalTracer
-This utility class has three main purposes:
- 1. Standardized static access to the configured global tracer in the application:
-    `GlobalTracer.tracer()`.
-    This method never returns a `null` reference, but at the very least a `NoopTracer` instance.
- 2. Providing a Java SPI ServiceLoader support for compatible `Tracer` implementations
-    that contain a `META-INF/services/io.opentracing.Tracer` entry.
-    In case there are no (or multiple) Tracer implementations, 
-    a configured tracer can be registered explicitly by calling `GlobalTracer.register()`.
- 3. Wrapping the configured global tracer implementation so all `Span` instances
-    created from it are automatically registered as _active span_ and deregistered
-    when they finish.
+This class has the following purpose:
+ 1. The `GlobalTracer.tracer()` factory method returning the singleton _global tracer_.
+    If there is no global tracer, a `NoopTracer` is returned instead.
+ 2. Enrich the lifecycle of created `Span` objects through the global Tracer 
+    to update the _active span_ as they are started and finished.
+ 3. Utility `spanAware()` methods to create 'span aware' Runnable and Callable instances
+    that run with the _active span_ from the scheduling thread.
+ 4. Utility `traced()` methods to create Runnable and Callable instances 
+    that run within a new Span that is _child of the active span_ form the scheduling thread.
+    An `operationName` must be provided for a new Span to be created.
 
 ## ActiveSpanManager
-This utility class provides the following functionality.
- 1. The `ActiveSpanManager.activate()` static method that is automatically called from
-    the `GlobalTracer` instance. 
- 2. The `Closable` result from this `activate()` method will deactviate the given `Span`
-    if needed. However, the `Spans` returned by the `GlobalTracer` will also make sure
-    they get deactivated whenever they're finished or closed.
- 3. A method `ActiveSpanManager.activeSpan()` that will return the _active span_ 
-    from anywhere in the code. This may be useful for libraries that wish to add tags
-    or log information in the active span.
- 4. It contains a default implementation that uses `ThreadLocal` storage to manage
-    the globally _active span_, activating and deactivating it at the appropriate
-    moments (starting / closing spans etc).
- 5. `Tracer` implementations or applications that require more customized span management
-    can provide their own subclass of `ActiveSpanManager` and either register it 
-    programmatically through the `ActiveSpanManager.registerInstance()` method 
-    or automatically by the Java SPI ServiceLoader via a 
-    `META-INF/services/io.opentracing.global.ActiveSpanManager` service definition.
+This class:
+ 1. Provides clients with the `ActiveSpanManger.activeSpan()` method to return the
+    _active span_.
+    If there is no active span, the method never returns a `null` refrence, but
+    a `NoopSpan` instead.
+ 2. Modifications to the _active span_ can be made through the `activate` 
+    and `deactivate` methods.
+    Note that Spans created through the GlobalTracer.tracer() instance will 
+    activate and deactivate themselves.
 
 ## How to use this library
+
+  _TODO: rewrite the examples!_
+
 This section tries to give some basic examples on how to use the Global tracer and
 identify some caveats that need to be taken into account.
 
