@@ -58,9 +58,14 @@ public final class GlobalTracer {
      * @return The previous global tracer.
      */
     public static Tracer register(final Tracer delegate) {
-        final Tracer previous = DELEGATE.getAndSet(ActiveSpanTracer.wrap(delegate));
-        LOGGER.log(Level.INFO, delegate == null ? "Cleared GlobalTracer delegate registration."
-                : "Registered GlobalTracer delegate: {0}.", delegate);
+        final Tracer previous = DELEGATE.getAndSet(delegate);
+        if (delegate == null) {
+            Level loglevel = previous == null ? Level.FINEST : Level.INFO;
+            LOGGER.log(loglevel, "Cleared GlobalTracer registration.");
+        } else {
+            String message = previous == null ? "Registered GlobalTracer: {0}." : "Replaced GlobalTracer {1} with {0}.";
+            LOGGER.log(Level.INFO, message, new Object[]{delegate, previous});
+        }
         return previous;
     }
 
@@ -81,7 +86,7 @@ public final class GlobalTracer {
     public static Tracer tracer() {
         Tracer instance = DELEGATE.get();
         if (instance == null) {
-            final Tracer singleton = ActiveSpanTracer.wrap(loadSingleton());
+            final Tracer singleton = loadSingleton();
             while (instance == null && singleton != null) {
                 DELEGATE.compareAndSet(null, singleton);
                 instance = DELEGATE.get();

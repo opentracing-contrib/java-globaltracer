@@ -1,4 +1,4 @@
-package io.opentracing.contrib.global;
+package io.opentracing.contrib.activespan.tracer;
 
 import io.opentracing.Span;
 import io.opentracing.Tracer;

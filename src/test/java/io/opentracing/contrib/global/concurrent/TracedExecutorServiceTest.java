@@ -1,9 +1,12 @@
 package io.opentracing.contrib.global.concurrent;
 
 import io.opentracing.NoopSpan;
+import io.opentracing.NoopTracer;
 import io.opentracing.Span;
+import io.opentracing.Tracer;
 import io.opentracing.contrib.activespan.ActiveSpanManager;
 import io.opentracing.contrib.activespan.concurrent.SpanAwareExecutors;
+import io.opentracing.contrib.activespan.tracer.ActiveSpanTracer;
 import io.opentracing.contrib.global.GlobalTracer;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
@@ -16,7 +19,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-import static io.opentracing.contrib.global.DelegationTestUtil.unwrap;
+import static io.opentracing.contrib.activespan.tracer.DelegationTestUtil.unwrap;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
@@ -27,16 +30,19 @@ public class TracedExecutorServiceTest {
 
     ExecutorService tracedThreadpool;
 
+    MockTracer mockTracer;
+    Tracer previousGlobalTracer;
+
     @Before
     public void setUp() {
         tracedThreadpool = SpanAwareExecutors.newCachedThreadPool();
-        // Reset the (global) MockTracer.
-        assertThat(unwrap(GlobalTracer.tracer()), is(instanceOf(MockTracer.class)));
-        ((MockTracer) unwrap(GlobalTracer.tracer())).reset();
+        mockTracer = new MockTracer();
+        previousGlobalTracer = GlobalTracer.register(new ActiveSpanTracer(mockTracer));
     }
 
     @After
     public void tearDown() {
+        GlobalTracer.register(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
         tracedThreadpool.shutdown();
     }
 
@@ -69,7 +75,7 @@ public class TracedExecutorServiceTest {
         future.get(); // block until background tasks completes.
 
         assertThat(ActiveSpanManager.activeSpan(), is(instanceOf(NoopSpan.class)));
-        
+
         assertThat(unwrap(GlobalTracer.tracer()), is(instanceOf(MockTracer.class)));
         final MockTracer mockTracer = (MockTracer) unwrap(GlobalTracer.tracer());
 

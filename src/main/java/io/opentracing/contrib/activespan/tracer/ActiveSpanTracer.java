@@ -1,27 +1,31 @@
-package io.opentracing.contrib.global;
+package io.opentracing.contrib.activespan.tracer;
 
-import io.opentracing.NoopTracer;
-import io.opentracing.NoopTracerFactory;
+import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
+import io.opentracing.contrib.activespan.ActiveSpanManager;
 import io.opentracing.propagation.Format;
 
 /**
- * {@link Tracer} that forwards all methods to a delegate.<br>
- * Created {@link SpanBuilder} instances are wrapped in {@link ActiveSpanBuilder} wrappers.
+ * Wrapper that forwards all calls to another {@link Tracer} implementation.<br>
+ * {@link io.opentracing.Span Spans} created with this tracer are
+ * {@link ActiveSpanManager#setActiveSpan(Span) activated} when started and
+ * {@link ActiveSpanManager#deactivate(ActiveSpanManager.SpanDeactivator) deactivated} when finished.
+ * <p>
+ * The {@link SpanBuilder} of this Tracer will short-circuit to the
+ * {@link io.opentracing.NoopSpanBuilder NoopSpanBuilder}.
+ * This means {@link io.opentracing.NoopSpan NoopSpan}
+ * instances will be activated or deactivated through this tracer.
+ *
+ * @author Sjoerd Talsma
  */
-final class ActiveSpanTracer implements Tracer {
+public class ActiveSpanTracer implements Tracer {
 
     protected Tracer delegate;
 
-    ActiveSpanTracer(Tracer delegate) {
+    public ActiveSpanTracer(Tracer delegate) {
         if (delegate == null) throw new NullPointerException("The delegate Tracer implementation is <null>.");
         this.delegate = delegate;
-    }
-
-    static Tracer wrap(Tracer delegate) {
-        if (delegate == null || delegate instanceof NoopTracer) return NoopTracerFactory.create();
-        return new ActiveSpanTracer(delegate);
     }
 
     public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {

@@ -5,6 +5,7 @@ import io.opentracing.NoopTracer;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.contrib.activespan.ActiveSpanManager;
+import io.opentracing.contrib.activespan.tracer.ActiveSpanTracer;
 import io.opentracing.contrib.global.GlobalTracer;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
@@ -42,7 +43,7 @@ public class ThirdpartyPropagationTest {
     public void setUp() {
         thirdpartyThreadpool = new ContextAwareExecutorService(Executors.newCachedThreadPool());
         mockTracer = new MockTracer();
-        previousGlobalTracer = GlobalTracer.register(mockTracer);
+        previousGlobalTracer = GlobalTracer.register(new ActiveSpanTracer(mockTracer));
     }
 
     @After
