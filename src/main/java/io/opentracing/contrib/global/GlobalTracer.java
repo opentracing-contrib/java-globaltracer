@@ -116,9 +116,6 @@ public final class GlobalTracer implements Tracer {
      * Wraps the {@link Callable} to execute within a new {@link Span} if an
      * {@link TracedCallable#withOperationName(String) operationName} is also specified.<br>
      * If no operationName is provided, the callable will execute as-is without starting a new span.
-     * <p>
-     * If an <em>active span manager</em> is detected, the new span will become the <em>child</em> of the currently
-     * active span from the caller.
      *
      * @param callable The callable to wrap.
      * @param <V>      The return type of the wrapped call.
@@ -133,9 +130,6 @@ public final class GlobalTracer implements Tracer {
      * Wraps the {@link Runnable} to execute within a new {@link Span} if an
      * {@link TracedCallable#withOperationName(String) operationName} is also specified.<br>
      * If no operationName is provided, the callable will execute as-is without starting a new span.
-     * <p>
-     * If an <em>active span manager</em> is detected, the new span will become the <em>child</em> of the currently
-     * active span from the caller.
      *
      * @param runnable The runnable to wrap.
      * @return The wrapped call.
