@@ -33,12 +33,12 @@ public class TracedCallableTest {
         previousGlobalTracer = GlobalTracer.tracer();
         mockTracer = mock(Tracer.class);
         threadpool = Executors.newCachedThreadPool();
-        GlobalTracer.register(mockTracer);
+        GlobalTracer.setTracer(mockTracer);
     }
 
     @After
     public void teardown() {
-        GlobalTracer.register(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
+        GlobalTracer.setTracer(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
         threadpool.shutdown();
         verifyNoMoreInteractions(mockTracer);
     }

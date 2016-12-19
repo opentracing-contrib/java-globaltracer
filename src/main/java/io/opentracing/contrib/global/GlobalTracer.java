@@ -19,15 +19,12 @@ import java.util.logging.Logger;
  * The <code>GlobalTracer</code> forwards all methods to a single {@link Tracer} implementation that can be
  * instantiated in one of two ways:
  * <ol>
- * <li>Explicitly, by calling {@link #register(Tracer)} with a configured tracer implementation, or:</li>
+ * <li>Explicitly, by calling {@link #setTracer(Tracer)} with a configured tracer implementation, or:</li>
  * <li>Automatically by using the Java <code>ServiceLoader</code> SPI mechanism to load an implementation
  * from the classpath.</li>
  * </ol>
  *
  * @author Sjoerd Talsma
- * @navassoc - provides 1 io.opentracing.Tracer
- * @navassoc - uses - io.opentracing.contrib.activespan.ActiveSpanManager
- * @see Tracer
  */
 public final class GlobalTracer implements Tracer {
     private static final Logger LOGGER = Logger.getLogger(GlobalTracer.class.getName());
@@ -36,9 +33,9 @@ public final class GlobalTracer implements Tracer {
 
     /**
      * The resolved {@link Tracer} to delegate the global tracing implementation to.<br>
-     * This can be either an {@link #register(Tracer) explicitly registered delegate}
+     * This can be either an {@link #setTracer(Tracer) explicitly set delegate}
      * or the automatically resolved Tracer implementation.<br>
-     * Management of this reference is the responsibility of the {@link #tracer()} method.
+     * Management of this reference is the responsibility of the {@link #lazyInitTracer()} method.
      */
     private final AtomicReference<Tracer> globalTracer = new AtomicReference<Tracer>();
 
@@ -48,7 +45,7 @@ public final class GlobalTracer implements Tracer {
     private GlobalTracer() {
     }
 
-    private Tracer getOrInitTracer() {
+    private Tracer lazyInitTracer() {
         Tracer instance = globalTracer.get();
         if (instance == null) {
             final Tracer singleton = loadSingleton();
@@ -71,20 +68,20 @@ public final class GlobalTracer implements Tracer {
      * @param delegate Tracer to delegate the tracing implementation to.
      * @return The previous global tracer.
      */
-    public static Tracer register(final Tracer delegate) {
+    public static Tracer setTracer(final Tracer delegate) {
         final Tracer previous = INSTANCE.globalTracer.getAndSet(delegate);
         if (delegate == null) {
             Level loglevel = previous == null ? Level.FINEST : Level.INFO;
             LOGGER.log(loglevel, "Cleared GlobalTracer registration.");
         } else {
-            String message = previous == null ? "Registered GlobalTracer: {0}." : "Replaced GlobalTracer {1} with {0}.";
+            String message = previous == null ? "Set GlobalTracer: {0}." : "Replaced GlobalTracer {1} with {0}.";
             LOGGER.log(Level.INFO, message, new Object[]{delegate, previous});
         }
         return previous;
     }
 
     /**
-     * Returns the {@link #register(Tracer) explicitly registered} Tracer implementation.
+     * Returns the {@link #setTracer(Tracer) explicitly set} Tracer implementation.
      * <p>
      * If no explicit registration exists, the Java {@link java.util.ServiceLoader ServiceLoader} is used to load
      * the {@link Tracer} service implementation.<br>
@@ -94,22 +91,22 @@ public final class GlobalTracer implements Tracer {
      * @return The non-<code>null</code> global tracer to use.
      */
     public static Tracer tracer() {
-        return INSTANCE.getOrInitTracer();
+        return INSTANCE.lazyInitTracer();
     }
 
     @Override
     public SpanBuilder buildSpan(String operationName) {
-        return getOrInitTracer().buildSpan(operationName);
+        return lazyInitTracer().buildSpan(operationName);
     }
 
     @Override
     public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {
-        getOrInitTracer().inject(spanContext, format, carrier);
+        lazyInitTracer().inject(spanContext, format, carrier);
     }
 
     @Override
     public <C> SpanContext extract(Format<C> format, C carrier) {
-        return getOrInitTracer().extract(format, carrier);
+        return lazyInitTracer().extract(format, carrier);
     }
 
     /**
