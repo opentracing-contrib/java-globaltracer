@@ -16,7 +16,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The <code>GlobalTracer</code> forwards all methods to a single {@link Tracer} implementation that can be
+ * The {@linkplain GlobalTracer} forwards all methods to a single {@link Tracer} implementation that can be
  * instantiated in one of two ways:
  * <ol>
  * <li>Explicitly, by calling {@link #setTracer(Tracer)} with a configured tracer implementation, or:</li>
