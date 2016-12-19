@@ -2,10 +2,11 @@ package io.opentracing.contrib.global;
 
 import io.opentracing.NoopTracerFactory;
 import io.opentracing.Span;
+import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import io.opentracing.contrib.activespan.ActiveSpanManager;
 import io.opentracing.contrib.global.concurrent.TracedCallable;
 import io.opentracing.contrib.global.concurrent.TracedRunnable;
+import io.opentracing.propagation.Format;
 
 import java.util.Iterator;
 import java.util.ServiceLoader;
@@ -15,10 +16,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The <code>GlobalTracer</code> class is not a {@link Tracer} implementation of itself, but instead a utility-class
- * to centrally reference the {@link #tracer() singleton instance} of the configured {@link Tracer} implementation.
- * <p>
- * The singleton instance can be instantiated in one of two ways:
+ * The <code>GlobalTracer</code> forwards all methods to a single {@link Tracer} implementation that can be
+ * instantiated in one of two ways:
  * <ol>
  * <li>Explicitly, by calling {@link #register(Tracer)} with a configured tracer implementation, or:</li>
  * <li>Automatically by using the Java <code>ServiceLoader</code> SPI mechanism to load an implementation
@@ -30,8 +29,10 @@ import java.util.logging.Logger;
  * @navassoc - uses - io.opentracing.contrib.activespan.ActiveSpanManager
  * @see Tracer
  */
-public final class GlobalTracer {
+public final class GlobalTracer implements Tracer {
     private static final Logger LOGGER = Logger.getLogger(GlobalTracer.class.getName());
+
+    private static final GlobalTracer INSTANCE = new GlobalTracer();
 
     /**
      * The resolved {@link Tracer} to delegate the global tracing implementation to.<br>
@@ -39,13 +40,26 @@ public final class GlobalTracer {
      * or the automatically resolved Tracer implementation.<br>
      * Management of this reference is the responsibility of the {@link #tracer()} method.
      */
-    private static final AtomicReference<Tracer> DELEGATE = new AtomicReference<Tracer>();
+    private final AtomicReference<Tracer> globalTracer = new AtomicReference<Tracer>();
 
     /**
-     * Private constructor to prevent instantiation of this utility class.
+     * Private constructor to prevent outside instantiation of this singleton class.
      */
     private GlobalTracer() {
-        throw new UnsupportedOperationException();
+    }
+
+    private Tracer getOrInitTracer() {
+        Tracer instance = globalTracer.get();
+        if (instance == null) {
+            final Tracer singleton = loadSingleton();
+            while (instance == null && singleton != null) {
+                globalTracer.compareAndSet(null, singleton);
+                instance = globalTracer.get();
+            }
+            LOGGER.log(Level.INFO, "Using global Tracer implementation: {0}.", instance);
+        }
+        LOGGER.log(Level.FINEST, "Global tracer: {0}.", instance);
+        return instance;
     }
 
     /**
@@ -58,7 +72,7 @@ public final class GlobalTracer {
      * @return The previous global tracer.
      */
     public static Tracer register(final Tracer delegate) {
-        final Tracer previous = DELEGATE.getAndSet(delegate);
+        final Tracer previous = INSTANCE.globalTracer.getAndSet(delegate);
         if (delegate == null) {
             Level loglevel = previous == null ? Level.FINEST : Level.INFO;
             LOGGER.log(loglevel, "Cleared GlobalTracer registration.");
@@ -76,39 +90,39 @@ public final class GlobalTracer {
      * the {@link Tracer} service implementation.<br>
      * If zero or more than one service implementations are found,
      * the {@link io.opentracing.NoopTracer NoopTracer} will be returned.
-     * <p>
-     * Spans created from Tracers will automatically become the
-     * {@link ActiveSpanManager#activeSpan() active span} when started and get
-     * {@link ActiveSpanManager#deactivate(ActiveSpanManager.SpanDeactivator) deactivated} when finished or closed.
      *
      * @return The non-<code>null</code> global tracer to use.
      */
     public static Tracer tracer() {
-        Tracer instance = DELEGATE.get();
-        if (instance == null) {
-            final Tracer singleton = loadSingleton();
-            while (instance == null && singleton != null) {
-                DELEGATE.compareAndSet(null, singleton);
-                instance = DELEGATE.get();
-            }
-            LOGGER.log(Level.INFO, "Using global Tracer implementation: {0}.", instance);
-        }
-        LOGGER.log(Level.FINEST, "Global tracer: {0}.", instance);
-        return instance;
+        return INSTANCE.getOrInitTracer();
+    }
+
+    @Override
+    public SpanBuilder buildSpan(String operationName) {
+        return getOrInitTracer().buildSpan(operationName);
+    }
+
+    @Override
+    public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {
+        getOrInitTracer().inject(spanContext, format, carrier);
+    }
+
+    @Override
+    public <C> SpanContext extract(Format<C> format, C carrier) {
+        return getOrInitTracer().extract(format, carrier);
     }
 
     /**
-     * Wraps the {@link Callable} to execute with the {@link ActiveSpanManager#activeSpan() active span}
-     * from the scheduling thread.
+     * Wraps the {@link Callable} to execute within a new {@link Span} if an
+     * {@link TracedCallable#withOperationName(String) operationName} is also specified.<br>
+     * If no operationName is provided, the callable will execute as-is without starting a new span.
      * <p>
-     * Furthermore, a new {@link Span} will be started <em>as child of this active span</em>
-     * around the call if a non-<code>null</code> {@link TracedCallable#withOperationName(String) operationName}
-     * is provided.
+     * If an <em>active span manager</em> is detected, the new span will become the <em>child</em> of the currently
+     * active span from the caller.
      *
      * @param callable The callable to wrap.
      * @param <V>      The return type of the wrapped call.
      * @return The wrapped call.
-     * @see ActiveSpanManager#spanAware(Callable)
      * @see TracedCallable#withOperationName(String)
      */
     public static <V> TracedCallable<V> traced(Callable<V> callable) {
@@ -116,16 +130,15 @@ public final class GlobalTracer {
     }
 
     /**
-     * Wraps the {@link Runnable} to execute with the {@link ActiveSpanManager#activeSpan() active span}
-     * from the scheduling thread.
+     * Wraps the {@link Runnable} to execute within a new {@link Span} if an
+     * {@link TracedCallable#withOperationName(String) operationName} is also specified.<br>
+     * If no operationName is provided, the callable will execute as-is without starting a new span.
      * <p>
-     * Furthermore, a new {@link Span} will be started <em>as child of this active span</em>
-     * around the call if a non-<code>null</code> {@link TracedCallable#withOperationName(String) operationName}
-     * is provided.
+     * If an <em>active span manager</em> is detected, the new span will become the <em>child</em> of the currently
+     * active span from the caller.
      *
      * @param runnable The runnable to wrap.
      * @return The wrapped call.
-     * @see ActiveSpanManager#spanAware(Runnable)
      * @see TracedRunnable#withOperationName(String)
      */
     public static TracedRunnable traced(Runnable runnable) {
@@ -144,11 +157,11 @@ public final class GlobalTracer {
              foundSingleton == null && implementations.hasNext(); ) {
             final Tracer implementation = implementations.next();
             if (implementation != null) {
-                LOGGER.log(Level.FINEST, "Service loaded: {0}.", implementation);
+                LOGGER.log(Level.FINEST, "Tracer service loaded: {0}.", implementation);
                 if (implementations.hasNext()) { // Don't actually load the next implementation, fall-back to default.
-                    LOGGER.log(Level.WARNING, "More than one Tracer service implementation found. " +
-                            "Falling back to default implementation.");
-                    break;
+                    LOGGER.log(Level.WARNING,
+                            "More than one Tracer service implementation found. Falling back to default implementation.");
+                    foundSingleton = NoopTracerFactory.create();
                 } else {
                     foundSingleton = implementation;
                 }
@@ -160,4 +173,5 @@ public final class GlobalTracer {
         }
         return foundSingleton;
     }
+
 }

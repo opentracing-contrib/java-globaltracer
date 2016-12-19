@@ -45,7 +45,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <build.java.version>1.6</build.java.version>
         <opentracing-api.version>0.20.2</opentracing-api.version>
-        <contrib-activespan.version>0.1.0-SNAPSHOT</contrib-activespan.version>
+        <opentracing-activespan.version>0.1.0-SNAPSHOT</opentracing-activespan.version>
     </properties>
 
     <dependencies>
@@ -60,10 +60,14 @@
             <artifactId>opentracing-noop</artifactId>
             <version>${opentracing-api.version}</version>
         </dependency>
+
+        <!-- Optional depencency: -->
         <dependency>
             <groupId>io.opentracing.contrib.activespan</groupId>
             <artifactId>opentracing-activespan</artifactId>
-            <version>${contrib-activespan.version}</version>
+            <version>${opentracing-activespan.version}</version>
+            <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Test dependencies: -->

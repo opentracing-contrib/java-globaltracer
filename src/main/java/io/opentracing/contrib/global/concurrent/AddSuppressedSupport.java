@@ -7,8 +7,8 @@ import java.util.logging.Logger;
 
 /**
  * Unfortunately Java 1.6 does not yet support try-with-resources.
- * When running in a > 1.7 JVM we really want to provide this behaviour.
- * We provide this behaviour anyway when running in a > 1.7 JVM.
+ * When running in a 1.7 JVM we really want to provide this behaviour.<br>
+ * Fallback in java 6 is logging the suppressed exception to make sure to always return the 'main' exception.
  *
  * @author Sjoerd Talsma
  */
@@ -21,7 +21,7 @@ final class AddSuppressedSupport {
         try {
             addSuppressedMethod = Throwable.class.getMethod("addSuppressed", Throwable.class);
         } catch (NoSuchMethodException addSuppressedNotFound) {
-            LOGGER.log(Level.FINEST, "We're running in older JVM where addSuppressed is not available.");
+            LOGGER.log(Level.FINEST, "Older JVM encountered where addSuppressed is not available.");
         }
         JAVA7_ADDSUPPRESSED = addSuppressedMethod;
     }
@@ -29,13 +29,13 @@ final class AddSuppressedSupport {
     /**
      * <ol>
      * <li>Returns <code>toBeSuppressed</code> if <code>mainException</code> is null.</li>
-     * <li>For JVM < 1.7 logs stacktrace of <code>toBeSuppressed</code> and returns <code>mainException</code>.</li>
+     * <li>For Java 1.6 VM logs stacktrace of <code>toBeSuppressed</code> and returns <code>mainException</code>.</li>
      * <li>Otherwise, calls <code>mainException.addSuppressed(toBeSuppressed)</code> and returns <code>mainException</code>.</li>
      * </ol>
      *
      * @param mainException  The main exception that occurred (if any).
      * @param toBeSuppressed The exception to be suppressed (required).
-     * @param logmessage Message to log suppressed stacktrace with if JVM < 1.7
+     * @param logmessage     Message to log suppressed stacktrace with if running in a Java 1.6 VM.
      * @return Nothing, throws either <code>mainException</code> or <code>toBeSuppressed</code>.
      */
     static Exception addSuppressedOrLog(Exception mainException, Exception toBeSuppressed, String logmessage) {
