@@ -67,12 +67,6 @@
             <version>${opentracing-api.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>nl.talsmasoftware</groupId>
-            <artifactId>context-propagation</artifactId>
-            <version>0.3.0</version>
-            <scope>test</scope>
-        </dependency>
 
         <dependency>
             <groupId>junit</groupId>
