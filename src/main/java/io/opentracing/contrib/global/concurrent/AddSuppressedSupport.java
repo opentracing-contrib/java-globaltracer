@@ -27,16 +27,14 @@ final class AddSuppressedSupport {
     }
 
     /**
-     * <ol>
-     * <li>Returns <code>toBeSuppressed</code> if <code>mainException</code> is null.</li>
-     * <li>For Java 1.6 VM logs stacktrace of <code>toBeSuppressed</code> and returns <code>mainException</code>.</li>
-     * <li>Otherwise, calls <code>mainException.addSuppressed(toBeSuppressed)</code> and returns <code>mainException</code>.</li>
-     * </ol>
+     * This method calls <code>mainException.addSuppressed(toBeSuppressed)</code>
+     * if both exceptions are non-<code>null</code> and the JVM supports the method.
+     * Otherwise toBeSuppressed gets logged as it cannot be added to mainException.
      *
      * @param mainException  The main exception that occurred (if any).
      * @param toBeSuppressed The exception to be suppressed (required).
      * @param logmessage     Message to log suppressed stacktrace with if running in a Java 1.6 VM.
-     * @return Nothing, throws either <code>mainException</code> or <code>toBeSuppressed</code>.
+     * @return <code>mainException</code> if non-<code>null</code> or <code>toBeSuppressed</code> otherwise.
      */
     static Exception addSuppressedOrLog(Exception mainException, Exception toBeSuppressed, String logmessage) {
         if (mainException == null) return toBeSuppressed;
