@@ -150,8 +150,8 @@ public final class GlobalTracer implements Tracer {
             if (implementation != null) {
                 LOGGER.log(Level.FINEST, "Tracer service loaded: {0}.", implementation);
                 if (implementations.hasNext()) { // Don't actually load the next implementation, fall-back to default.
-                    LOGGER.log(Level.WARNING,
-                            "More than one Tracer service implementation found. Falling back to default implementation.");
+                    LOGGER.log(Level.WARNING, "More than one Tracer service implementation found. " +
+                            "Falling back to default no-op tracer implementation.");
                     foundSingleton = NoopTracerFactory.create();
                 } else {
                     foundSingleton = implementation;
@@ -159,7 +159,8 @@ public final class GlobalTracer implements Tracer {
             }
         }
         if (foundSingleton == null) {
-            LOGGER.log(Level.FINEST, "No Tracer service implementation found. Falling back to default implementation.");
+            LOGGER.log(Level.FINEST, "No Tracer service implementation found. " +
+                    "Falling back to default no-op implementation.");
             foundSingleton = NoopTracerFactory.create();
         }
         return foundSingleton;
