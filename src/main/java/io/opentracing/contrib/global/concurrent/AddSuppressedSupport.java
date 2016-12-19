@@ -40,6 +40,7 @@ final class AddSuppressedSupport {
      */
     static Exception addSuppressedOrLog(Exception mainException, Exception toBeSuppressed, String logmessage) {
         if (mainException == null) return toBeSuppressed;
+        else if (toBeSuppressed == null) return mainException;
         else if (JAVA7_ADDSUPPRESSED == null) { // Java 1.6
             LOGGER.log(Level.WARNING, logmessage, toBeSuppressed);
         } else try {
