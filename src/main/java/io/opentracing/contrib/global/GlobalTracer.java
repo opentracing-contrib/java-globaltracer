@@ -56,9 +56,9 @@ public final class GlobalTracer implements Tracer {
                 globalTracer.compareAndSet(null, singleton);
                 instance = globalTracer.get();
             }
-            LOGGER.log(Level.INFO, "Using global Tracer implementation: {0}.", instance);
+            LOGGER.log(Level.INFO, "Using GlobalTracer implementation: {0}.", instance);
         }
-        LOGGER.log(Level.FINEST, "Global tracer: {0}.", instance);
+        LOGGER.log(Level.FINEST, "GlobalTracer: {0}.", instance);
         return instance;
     }
 
