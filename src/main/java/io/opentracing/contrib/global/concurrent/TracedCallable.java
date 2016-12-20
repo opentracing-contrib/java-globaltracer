@@ -46,30 +46,27 @@ public class TracedCallable<T> implements Callable<T> {
 
     public T call() throws Exception {
         Span newSpan = null;
-        Exception callException = null, closeException = null;
+        Exception callException = null; // Variable to be able to throw from finally without shadowing call exception.
         try {
 
             SpanBuilder spanBuilder = GlobalTracer.tracer().buildSpan(operationName);
-            if (spanBuilder == null) {
-                LOGGER.log(Level.WARNING, "Tracer returned SpanBuilder <null> for operation \"{0}\"!", operationName);
-            } else {
-                if (parentContext != null) {
-                    spanBuilder = spanBuilder.asChildOf(parentContext);
-                }
-                newSpan = spanBuilder.start();
-            }
+            if (parentContext != null) spanBuilder = spanBuilder.asChildOf(parentContext);
+            newSpan = spanBuilder.start();
+
             return delegate.call();
 
         } catch (Exception callEx) {
             callException = callEx;
+            throw callException;
         } finally {
             if (newSpan != null) try {
                 newSpan.close();
-            } catch (Exception closeEx) {
-                closeException = closeEx;
+            } catch (Exception closeException) {
+                // Don't shadow callException if non-null, otherwise throw closeException.
+                //noinspection ThrowFromFinallyBlock
+                throw ThrowableSupport.addSuppressed(callException, closeException);
             }
         }
-        throw ThrowableSupport.addSuppressed(callException, closeException);
     }
 
     /**
@@ -87,7 +84,7 @@ public class TracedCallable<T> implements Callable<T> {
         private static Exception addSuppressed(Exception mainException, Exception toBeSuppressed) {
             if (mainException == null) return toBeSuppressed;
             else if (toBeSuppressed == null) return mainException;
-            else if (JAVA7_ADDSUPPRESSED == null) { // Java 1.6
+            else if (JAVA7_ADDSUPPRESSED == null) { // Running in old JVM
                 LOGGER.log(Level.WARNING, "Exception closing new span.", toBeSuppressed);
             } else try {
                 JAVA7_ADDSUPPRESSED.invoke(mainException, toBeSuppressed);
