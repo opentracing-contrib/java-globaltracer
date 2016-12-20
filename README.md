@@ -36,11 +36,11 @@ Once initialized, all application code can instrument tracing by starting new sp
 ````java
     try (Span span = GlobalTracer.tracer().buildSpan("someOperation").start()) {
         // Code executing here is part of the 'someOperation' Span.
-        // This span will be closed, regardles of any exceptions thrown here.
+        // This span will be closed, regardless of any exceptions thrown here.
     }
 ````
 
-Even if no GlobalTracer is configured, this code will not throw any exceptions.
+If no GlobalTracer is configured, this code will not throw any exceptions.
 Tracing is simply delegated to the `NoopTracer` instead.
 
 ### Automatic Span propagation
