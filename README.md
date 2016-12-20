@@ -6,7 +6,7 @@ This library provides access to a `GlobalTracer`:
 ## GlobalTracer
 This class has the following purpose:
  1. The `GlobalTracer.tracer()` method returning the singleton _global tracer_.  
-    Upon first use of any tracing method, this tracer lazily determines which {@link Tracer}
+    Upon first use of any tracing method, this tracer lazily determines which `Tracer`
     implementation to use:  
     a) If an explicitly configured tracer was provided via the `GlobalTracer.setTracer()` method,
     that will always take precedence over automatically provided tracer instances.  
