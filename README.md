@@ -23,13 +23,12 @@ This class has the following purpose:
 Some examples on how this library can be used:
 
 ### Application intialization
-Initialize a new tracer, provide some custom configuration 
+Initialize a new tracer from the application configuration
 and let it to become the `GlobalTracer` for the application:
 ````java
-    // see https://github.com/openzipkin/brave-opentracing
-    BraveTracer braveTracer = (BraveTracer) new TracerFactory().build();
-    braveTracer.register(Format.Builtin.HTTP_HEADERS, new BraveHttpHeadersExtractor(braveTracer));
-    GlobalTracer.setTracer(braveTracer);
+    // for example 'new BraveTracer()' from https://github.com/openzipkin/brave-opentracing
+    Tracer configuredTracer = applicationConfiguration.buildConfiguredTracer();
+    GlobalTracer.setTracer(configuredTracer);
 ````
 
 ### Using the global tracer
