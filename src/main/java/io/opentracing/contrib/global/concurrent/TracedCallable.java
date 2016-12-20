@@ -78,14 +78,13 @@ public class TracedCallable<T> implements Callable<T> {
 
         /**
          * @param mainException  The main exception to be returned if non-null.
-         * @param toBeSuppressed The 'alternate exception' to be added to the main exception.
+         * @param toBeSuppressed The 'alternate exception' to be added to the main exception (required).
          * @return mainException if non-null, otherwise toBeSuppressed.
          */
         private static Exception addSuppressed(Exception mainException, Exception toBeSuppressed) {
             if (mainException == null) return toBeSuppressed;
-            else if (toBeSuppressed == null) return mainException;
             else if (JAVA7_ADDSUPPRESSED == null) { // Running in old JVM
-                LOGGER.log(Level.WARNING, "Exception closing new span.", toBeSuppressed);
+                LOGGER.log(Level.WARNING, "Exception closing the started span.", toBeSuppressed);
             } else try {
                 JAVA7_ADDSUPPRESSED.invoke(mainException, toBeSuppressed);
             } catch (InvocationTargetException ite) {

@@ -7,12 +7,10 @@ import io.opentracing.mock.MockTracer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.sameInstance;
+import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -31,6 +29,23 @@ public class GlobalTracerTest {
     @After
     public void teardown() {
         GlobalTracer.setTracer(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
+    }
+
+    @Test
+    public void testSingletonReference() {
+        Tracer tracer = GlobalTracer.tracer();
+        assertThat(tracer, is(instanceOf(GlobalTracer.class)));
+        assertThat(tracer, is(sameInstance(GlobalTracer.tracer())));
+    }
+
+    @Test
+    public void testSettingGlobalTracerAsOwnDelegate() {
+        try {
+            GlobalTracer.setTracer(GlobalTracer.tracer());
+            fail("exception expected");
+        } catch (IllegalArgumentException expected) {
+            assertThat(expected.getMessage(), is(notNullValue()));
+        }
     }
 
     /**

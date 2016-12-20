@@ -46,7 +46,7 @@ public final class GlobalTracer implements Tracer {
         Tracer instance = globalTracer.get();
         if (instance == null) {
             final Tracer singleton = loadSingleton();
-            while (instance == null && singleton != null) {
+            while (instance == null && singleton != null) { // for race condition only, should rarely happen.
                 globalTracer.compareAndSet(null, singleton);
                 instance = globalTracer.get();
             }
@@ -89,17 +89,10 @@ public final class GlobalTracer implements Tracer {
      */
     public static Tracer setTracer(final Tracer tracer) {
         if (tracer instanceof GlobalTracer) {
-            LOGGER.log(Level.WARNING, "Attempted to set the GlobalTracer as delegate of itself.");
-            return INSTANCE.globalTracer.get();
+            throw new IllegalArgumentException("Attempted to set the GlobalTracer as delegate of itself.");
         }
         Tracer previous = INSTANCE.globalTracer.getAndSet(tracer);
-        if (tracer == null) {
-            Level loglevel = previous == null ? Level.FINEST : Level.INFO;
-            LOGGER.log(loglevel, "Cleared GlobalTracer registration.");
-        } else {
-            String message = previous == null ? "Set GlobalTracer: {0}." : "Replaced GlobalTracer {1} with {0}.";
-            LOGGER.log(Level.INFO, message, new Object[]{tracer, previous});
-        }
+        logChangedTracer(tracer, previous);
         return previous;
     }
 
@@ -162,7 +155,7 @@ public final class GlobalTracer implements Tracer {
                 LOGGER.log(Level.FINEST, "Tracer service loaded: {0}.", implementation);
                 if (implementations.hasNext()) { // Don't actually load the next implementation, fall-back to default.
                     LOGGER.log(Level.WARNING, "More than one Tracer service implementation found. " +
-                            "Falling back to default no-op tracer implementation.");
+                            "Falling back to NoopTracer implementation.");
                     foundSingleton = NoopTracerFactory.create();
                 } else {
                     foundSingleton = implementation;
@@ -170,11 +163,22 @@ public final class GlobalTracer implements Tracer {
             }
         }
         if (foundSingleton == null) {
-            LOGGER.log(Level.FINEST, "No Tracer service implementation found. " +
-                    "Falling back to default no-op implementation.");
+            LOGGER.log(Level.FINEST, "No Tracer service implementation found. Falling back to NoopTracer implementation.");
             foundSingleton = NoopTracerFactory.create();
         }
         return foundSingleton;
+    }
+
+    private static void logChangedTracer(Tracer newTracer, Tracer oldTracer) {
+        Level loglevel = Level.INFO;
+        String message = "Replaced GlobalTracer {1} with {0}.";
+        if (newTracer == null) {
+            message = "Cleared GlobalTracer registration.";
+            if (oldTracer == null) loglevel = Level.FINEST;
+        } else if (oldTracer == null) {
+            message = "Set GlobalTracer: {0}.";
+        }
+        LOGGER.log(loglevel, message, new Object[]{newTracer, oldTracer});
     }
 
 }
