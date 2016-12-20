@@ -126,7 +126,7 @@ public class TracedCallableTest {
         try {
             result.get();
             fail("Span.close exception expected.");
-        } catch (ExecutionException expected) { // Test for original exception!
+        } catch (ExecutionException expected) { // Test for close exception!
             assertThat(expected.getCause(), is(instanceOf(IllegalStateException.class)));
             assertThat(expected.getCause().getMessage(), is("Already closed."));
         }

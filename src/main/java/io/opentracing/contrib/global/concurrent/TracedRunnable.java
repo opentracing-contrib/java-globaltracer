@@ -47,7 +47,7 @@ public class TracedRunnable implements Runnable {
         } catch (RuntimeException rte) {
             throw rte;
         } catch (Exception ex) {
-            throw new IllegalStateException("Checked exception from delegate: " + ex.getMessage(), ex);
+            throw new RuntimeException(ex.getMessage(), ex);
         }
     }
 
