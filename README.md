@@ -5,15 +5,46 @@ This library provides access to a `GlobalTracer`:
 
 ## GlobalTracer
 This class has the following purpose:
- 1. The `GlobalTracer.tracer()` factory method returning the singleton _global tracer_.
-    If there is no global tracer, a `NoopTracer` is returned instead.
- 2. Enrich the lifecycle of created `Span` objects through the global Tracer 
-    to update the _active span_ as they are started and finished.
- 3. Utility `traced()` methods to create Runnable and Callable instances 
-    that run within a new Span that is _child of the active span_ form the scheduling thread.
-    An `operationName` must be provided for a new Span to be created.
+ 1. The `GlobalTracer.tracer()` method returning the singleton _global tracer_.  
+    Upon first use of any tracing method, this tracer lazily determines which {@link Tracer}
+    implementation to use:  
+    a) If an explicitly configured tracer was provided via the `GlobalTracer.setTracer()` method,
+    that will always take precedence over automatically provided tracer instances.  
+    b) A Tracer implementation can be automatically provided using the Java `ServiceLoader` through the
+    `META-INF/services/io.opentracing.Tracer` service definition file.
+    The GlobalTracer class will not attempt to choose between implementations;
+    if more than one is found, a warning is logged and tracing is disabled by
+    falling back to the default implementation:  
+    c) If no tracer implementation is found, the `NoopTracer` will be used.
+ 2. Utility `traced()` methods to create `Runnable` and `Callable` instances that run within 
+    a new Span obtained from the global tracer.
 
 ## How to use this library
+Some examples on how this library can be used:
 
-  _TODO: rewrite the examples!_
+### Application intialization
+Initialize a new tracer, provide some custom configuration 
+and let it to become the `GlobalTracer` for the application:
+````java
+    // see https://github.com/openzipkin/brave-opentracing
+    BraveTracer braveTracer = (BraveTracer) new TracerFactory().build();
+    braveTracer.register(Format.Builtin.HTTP_HEADERS, new BraveHttpHeadersExtractor(braveTracer));
+    GlobalTracer.setTracer(braveTracer);
+````
 
+### Using the global tracer
+Once initialized, all application code can instrument tracing by starting new spans like:
+````java
+    try (Span span = GlobalTracer.tracer().buildSpan("someOperation").start()) {
+        // Code executing here is part of the 'someOperation' Span.
+        // This span will be closed, regardles of any exceptions thrown here.
+    }
+````
+
+Even if no GlobalTracer is configured, this code will not throw any exceptions.
+Tracing is simply delegated to the `NoopTracer` instead.
+
+### Automatic Span propagation
+This library only provides access to a global tracer and _does not_ manage any span propagation.  
+Consider combining this library with the [ActiveSpan library](https://github.com/opentracing-contrib/java-activespan)
+if you want to implicitly manage and access the active span in your application.

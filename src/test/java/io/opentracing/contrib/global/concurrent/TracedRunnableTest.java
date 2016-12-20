@@ -31,10 +31,9 @@ public class TracedRunnableTest {
 
     @Before
     public void setup() {
-        previousGlobalTracer = GlobalTracer.tracer();
         mockTracer = mock(Tracer.class);
         threadpool = Executors.newCachedThreadPool();
-        GlobalTracer.setTracer(mockTracer);
+        previousGlobalTracer = GlobalTracer.setTracer(mockTracer);
     }
 
     @After
@@ -45,7 +44,11 @@ public class TracedRunnableTest {
     }
 
     @Test
-    public void testNoTracingWithoutOperationName() throws ExecutionException, InterruptedException {
+    public void testWithoutOperationName() throws ExecutionException, InterruptedException {
+        SpanBuilder mockSpanBuilder = mock(SpanBuilder.class);
+        when(mockTracer.buildSpan(eq(""))).thenReturn(mockSpanBuilder);
+        when(mockSpanBuilder.start()).thenReturn(NoopSpan.INSTANCE);
+
         final AtomicBoolean ran = new AtomicBoolean(false);
         Future<?> result = threadpool.submit(TracedRunnable.of(new Runnable() {
             @Override
@@ -56,7 +59,9 @@ public class TracedRunnableTest {
 
         result.get(); // Block for result.
         assertThat(ran.get(), is(true));
-        verifyNoMoreInteractions(mockTracer); // No interaction with tracer!
+        verify(mockSpanBuilder).start();
+        verify(mockTracer).buildSpan("");
+        verifyNoMoreInteractions(mockSpanBuilder);
     }
 
     @Test

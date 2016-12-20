@@ -1,5 +1,6 @@
 package io.opentracing.contrib.global;
 
+import io.opentracing.NoopSpanBuilder;
 import io.opentracing.NoopTracer;
 import io.opentracing.Tracer;
 import io.opentracing.mock.MockTracer;
@@ -12,6 +13,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.sameInstance;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Sjoerd Talsma
@@ -22,7 +25,7 @@ public class GlobalTracerTest {
 
     @Before
     public void setup() {
-        previousGlobalTracer = GlobalTracer.tracer();
+        previousGlobalTracer = GlobalTracer.setTracer(null); // Reset lazy state and remember previous tracer.
     }
 
     @After
@@ -36,8 +39,11 @@ public class GlobalTracerTest {
      */
     @Test
     public void testServiceLoading() {
-        GlobalTracer.setTracer(null);
-        assertThat(GlobalTracer.tracer(), is(instanceOf(MockTracer.class)));
+        GlobalTracer.setTracer(null); // clear global tracer.
+        GlobalTracer.tracer().buildSpan("some operation"); // trigger lazy tracer service loading.
+
+        Tracer loadedTracer = GlobalTracer.setTracer(null); // clear again, return current (loaded) tracer.
+        assertThat(loadedTracer, is(instanceOf(MockTracer.class))); // MockTracer was configured.
     }
 
     /**
@@ -45,11 +51,23 @@ public class GlobalTracerTest {
      */
     @Test
     public void testExplicitSetting() {
-        Tracer t1 = Mockito.mock(Tracer.class), t2 = Mockito.mock(Tracer.class);
+        GlobalTracer.tracer().buildSpan("some operation"); // trigger lazy tracer service loading.
+        Tracer t1 = mock(Tracer.class), t2 = mock(Tracer.class);
+        when(t1.buildSpan(anyString())).thenReturn(NoopSpanBuilder.INSTANCE);
+        when(t2.buildSpan(anyString())).thenReturn(NoopSpanBuilder.INSTANCE);
+
         GlobalTracer.setTracer(t1);
-        assertThat(GlobalTracer.tracer(), is(sameInstance(t1)));
+        GlobalTracer.tracer().buildSpan("first operation");
+        GlobalTracer.tracer().buildSpan("second operation");
+
         assertThat(GlobalTracer.setTracer(t2), is(sameInstance(t1)));
-        assertThat(GlobalTracer.tracer(), is(sameInstance(t2)));
+        GlobalTracer.tracer().buildSpan("third operation");
+
+        verify(t1).buildSpan("first operation");
+        verify(t1).buildSpan("second operation");
+        verifyNoMoreInteractions(t1);
+        verify(t2).buildSpan("third operation");
+        verifyNoMoreInteractions(t2);
     }
 
 }

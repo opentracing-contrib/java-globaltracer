@@ -30,10 +30,9 @@ public class TracedCallableTest {
 
     @Before
     public void setup() {
-        previousGlobalTracer = GlobalTracer.tracer();
         mockTracer = mock(Tracer.class);
         threadpool = Executors.newCachedThreadPool();
-        GlobalTracer.setTracer(mockTracer);
+        previousGlobalTracer = GlobalTracer.setTracer(mockTracer);
     }
 
     @After
@@ -54,16 +53,22 @@ public class TracedCallableTest {
     }
 
     @Test
-    public void testNoTracingWithoutOperationName() throws ExecutionException, InterruptedException {
+    public void testWithoutOperationName() throws ExecutionException, InterruptedException {
+        SpanBuilder mockSpanBuilder = mock(SpanBuilder.class);
+        when(mockTracer.buildSpan(eq(""))).thenReturn(mockSpanBuilder);
+        when(mockSpanBuilder.start()).thenReturn(NoopSpan.INSTANCE);
+
         Future<String> result = threadpool.submit(TracedCallable.of(new SimpleCallable()));
 
         // Block for result.
         assertThat(result.get(), is("called"));
+        verify(mockSpanBuilder).start();
+        verify(mockTracer).buildSpan("");
         verifyNoMoreInteractions(mockTracer); // No interaction with tracer!
     }
 
     @Test
-    public void testTracedCall() throws ExecutionException, InterruptedException {
+    public void testWithoutParentContext() throws ExecutionException, InterruptedException {
         SpanBuilder mockSpanBuilder = mock(SpanBuilder.class);
         when(mockTracer.buildSpan(eq("testing"))).thenReturn(mockSpanBuilder);
         when(mockSpanBuilder.start()).thenReturn(NoopSpan.INSTANCE);
@@ -79,12 +84,13 @@ public class TracedCallableTest {
     }
 
     @Test
-    public void testTracedWithParentCall() throws ExecutionException, InterruptedException {
+    public void testTracedWithParentContext() throws ExecutionException, InterruptedException {
         final SpanContext mockParentContext = mock(SpanContext.class);
         final SpanBuilder mockSpanBuilder = mock(SpanBuilder.class);
         when(mockTracer.buildSpan(eq("testing"))).thenReturn(mockSpanBuilder);
         when(mockSpanBuilder.asChildOf(any(SpanContext.class))).thenReturn(mockSpanBuilder);
         when(mockSpanBuilder.start()).thenReturn(NoopSpan.INSTANCE);
+
         Future<String> result = threadpool.submit(
                 TracedCallable.of(new SimpleCallable()).withOperationName("testing").asChildOf(mockParentContext));
 
@@ -97,11 +103,12 @@ public class TracedCallableTest {
         verifyNoMoreInteractions(mockSpanBuilder);
     }
 
+    // TODO write tests for exception handling (a failing call, failing span.close() and a combination of those)
+
     /**
      * Simple callable that returns "called".
      */
     private static class SimpleCallable implements Callable<String> {
-
         @Override
         public String call() throws Exception {
             return "called";

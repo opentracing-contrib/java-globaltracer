@@ -35,17 +35,14 @@ public final class GlobalTracer implements Tracer {
      * The resolved {@link Tracer} to delegate the global tracing implementation to.<br>
      * This can be either an {@link #setTracer(Tracer) explicitly set delegate}
      * or the automatically resolved Tracer implementation.<br>
-     * Management of this reference is the responsibility of the {@link #lazyInitTracer()} method.
+     * Management of this reference is the responsibility of the {@link #lazyTracer()} method.
      */
     private final AtomicReference<Tracer> globalTracer = new AtomicReference<Tracer>();
 
-    /**
-     * Private constructor to prevent outside instantiation of this singleton class.
-     */
     private GlobalTracer() {
     }
 
-    private Tracer lazyInitTracer() {
+    private Tracer lazyTracer() {
         Tracer instance = globalTracer.get();
         if (instance == null) {
             final Tracer singleton = loadSingleton();
@@ -60,53 +57,50 @@ public final class GlobalTracer implements Tracer {
     }
 
     /**
+     * Returns the {@linkplain GlobalTracer} instance.
+     * Upon first use of any tracing method, this tracer lazily determines which actual {@link Tracer}
+     * implementation to use:
+     * <ol type="a">
+     * <li>If an explicitly configured tracer was provided via the {@link #setTracer(Tracer)} method,
+     * that will always take precedence over automatically provided tracer instances.</li>
+     * <li>A Tracer implementation can be automatically provided using the Java {@link ServiceLoader} through the
+     * <code>META-INF/services/io.opentracing.Tracer</code> service definition file.<br>
+     * The {@linkplain GlobalTracer} class will not attempt to choose between implementations;
+     * if more than one is found by the {@link ServiceLoader service loader},
+     * a warning is logged and tracing is disabled by falling back to the default implementation:</li>
+     * <li>If no tracer implementation is available, the {@link io.opentracing.NoopTracer NoopTracer}
+     * will be used.</li>
+     * </ol>
+     *
+     * @return The global tracer.
+     */
+    public static Tracer tracer() {
+        return INSTANCE;
+    }
+
+    /**
      * Explicit registration of a configured {@link Tracer} to back the behaviour
      * of the {@link #tracer() global tracer}.
      * <p>
-     * The previous global tracer is returned so it can be restored if necessary.
+     * The previous global tracer is returned so it can be restored later if necessary.
      *
-     * @param delegate Tracer to delegate the tracing implementation to.
+     * @param tracer Tracer to use as global tracer.
      * @return The previous global tracer.
      */
-    public static Tracer setTracer(final Tracer delegate) {
-        final Tracer previous = INSTANCE.globalTracer.getAndSet(delegate);
-        if (delegate == null) {
+    public static Tracer setTracer(final Tracer tracer) {
+        if (tracer instanceof GlobalTracer) {
+            LOGGER.log(Level.WARNING, "Attempted to set the GlobalTracer as delegate of itself.");
+            return INSTANCE.globalTracer.get();
+        }
+        Tracer previous = INSTANCE.globalTracer.getAndSet(tracer);
+        if (tracer == null) {
             Level loglevel = previous == null ? Level.FINEST : Level.INFO;
             LOGGER.log(loglevel, "Cleared GlobalTracer registration.");
         } else {
             String message = previous == null ? "Set GlobalTracer: {0}." : "Replaced GlobalTracer {1} with {0}.";
-            LOGGER.log(Level.INFO, message, new Object[]{delegate, previous});
+            LOGGER.log(Level.INFO, message, new Object[]{tracer, previous});
         }
         return previous;
-    }
-
-    /**
-     * Returns the {@link #setTracer(Tracer) explicitly set} Tracer implementation.
-     * <p>
-     * If no explicit registration exists, the Java {@link java.util.ServiceLoader ServiceLoader} is used to load
-     * the {@link Tracer} service implementation.<br>
-     * If zero or more than one service implementations are found,
-     * the {@link io.opentracing.NoopTracer NoopTracer} will be returned.
-     *
-     * @return The non-<code>null</code> global tracer to use.
-     */
-    public static Tracer tracer() {
-        return INSTANCE.lazyInitTracer();
-    }
-
-    @Override
-    public SpanBuilder buildSpan(String operationName) {
-        return lazyInitTracer().buildSpan(operationName);
-    }
-
-    @Override
-    public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {
-        lazyInitTracer().inject(spanContext, format, carrier);
-    }
-
-    @Override
-    public <C> SpanContext extract(Format<C> format, C carrier) {
-        return lazyInitTracer().extract(format, carrier);
     }
 
     /**
@@ -114,13 +108,14 @@ public final class GlobalTracer implements Tracer {
      * {@link TracedCallable#withOperationName(String) operationName} is also specified.<br>
      * If no operationName is provided, the callable will execute as-is without starting a new span.
      *
-     * @param callable The callable to wrap.
-     * @param <V>      The return type of the wrapped call.
+     * @param operationName Name of the traced operation.
+     * @param callable      Callable to wrap.
+     * @param <V>           Return type of the wrapped call.
      * @return The wrapped call.
      * @see TracedCallable#withOperationName(String)
      */
-    public static <V> TracedCallable<V> traced(Callable<V> callable) {
-        return TracedCallable.of(callable);
+    public static <V> TracedCallable<V> traced(String operationName, Callable<V> callable) {
+        return TracedCallable.of(callable).withOperationName(operationName);
     }
 
     /**
@@ -128,12 +123,28 @@ public final class GlobalTracer implements Tracer {
      * {@link TracedCallable#withOperationName(String) operationName} is also specified.<br>
      * If no operationName is provided, the callable will execute as-is without starting a new span.
      *
-     * @param runnable The runnable to wrap.
+     * @param operationName Name of the traced operation.
+     * @param runnable      Runnable to wrap.
      * @return The wrapped call.
      * @see TracedRunnable#withOperationName(String)
      */
-    public static TracedRunnable traced(Runnable runnable) {
+    public static TracedRunnable traced(String operationName, Runnable runnable) {
         return TracedRunnable.of(runnable);
+    }
+
+    @Override
+    public SpanBuilder buildSpan(String operationName) {
+        return lazyTracer().buildSpan(operationName);
+    }
+
+    @Override
+    public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {
+        lazyTracer().inject(spanContext, format, carrier);
+    }
+
+    @Override
+    public <C> SpanContext extract(Format<C> format, C carrier) {
+        return lazyTracer().extract(format, carrier);
     }
 
     /**
@@ -147,7 +158,7 @@ public final class GlobalTracer implements Tracer {
              ServiceLoader.load(Tracer.class, Tracer.class.getClassLoader()).iterator();
              foundSingleton == null && implementations.hasNext(); ) {
             final Tracer implementation = implementations.next();
-            if (implementation != null) {
+            if (implementation != null && !(implementation instanceof GlobalTracer)) {
                 LOGGER.log(Level.FINEST, "Tracer service loaded: {0}.", implementation);
                 if (implementations.hasNext()) { // Don't actually load the next implementation, fall-back to default.
                     LOGGER.log(Level.WARNING, "More than one Tracer service implementation found. " +
