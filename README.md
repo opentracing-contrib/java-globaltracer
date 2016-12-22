@@ -5,10 +5,10 @@ This library provides access to a `GlobalTracer`:
 
 ## GlobalTracer
 This class has the following purpose:
- 1. The `GlobalTracer.tracer()` method returning the singleton _global tracer_.  
+ 1. The `GlobalTracer.get()` method returning the singleton _global tracer_.  
     Upon first use of any tracing method, this tracer lazily determines which `Tracer`
     implementation to use:  
-    a) If an explicitly configured tracer was provided via the `GlobalTracer.setTracer()` method,
+    a) If an explicitly configured tracer was provided via the `GlobalTracer.set()` method,
     that will always take precedence over automatically provided tracer instances.  
     b) A Tracer implementation can be automatically provided using the Java `ServiceLoader` through the
     `META-INF/services/io.opentracing.Tracer` service definition file.
@@ -28,13 +28,13 @@ and let it to become the `GlobalTracer` for the application:
 ````java
     // for example 'new BraveTracer()' from https://github.com/openzipkin/brave-opentracing
     Tracer configuredTracer = applicationConfiguration.buildConfiguredTracer();
-    GlobalTracer.setTracer(configuredTracer);
+    GlobalTracer.set(configuredTracer);
 ````
 
 ### Using the global tracer
 Once initialized, all application code can instrument tracing by starting new spans like:
 ````java
-    try (Span span = GlobalTracer.tracer().buildSpan("someOperation").start()) {
+    try (Span span = GlobalTracer.get().buildSpan("someOperation").start()) {
         // Code executing here is part of the 'someOperation' Span.
         // This span will be closed, regardless of any exceptions thrown here.
     }

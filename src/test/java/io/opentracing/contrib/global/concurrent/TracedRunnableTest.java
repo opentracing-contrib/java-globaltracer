@@ -20,9 +20,6 @@ import static org.hamcrest.Matchers.is;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
-/**
- * @author Sjoerd Talsma
- */
 public class TracedRunnableTest {
 
     Tracer previousGlobalTracer = null;
@@ -33,12 +30,12 @@ public class TracedRunnableTest {
     public void setup() {
         mockTracer = mock(Tracer.class);
         threadpool = Executors.newCachedThreadPool();
-        previousGlobalTracer = GlobalTracer.setTracer(mockTracer);
+        previousGlobalTracer = GlobalTracer.set(mockTracer);
     }
 
     @After
     public void teardown() {
-        GlobalTracer.setTracer(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
+        GlobalTracer.set(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
         threadpool.shutdown();
         verifyNoMoreInteractions(mockTracer);
     }

@@ -33,7 +33,7 @@ public class TracedCallableTest {
     @Before
     public void setup() {
         mockTracer = mock(Tracer.class);
-        previousGlobalTracer = GlobalTracer.setTracer(mockTracer);
+        previousGlobalTracer = GlobalTracer.set(mockTracer);
 
         mockSpan = mock(Span.class);
         mockParentContext = mock(SpanContext.class);
@@ -45,7 +45,7 @@ public class TracedCallableTest {
 
     @After
     public void teardown() {
-        GlobalTracer.setTracer(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
+        GlobalTracer.set(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
         verifyNoMoreInteractions(mockTracer, mockSpanBuilder, mockParentContext, mockSpan);
     }
 

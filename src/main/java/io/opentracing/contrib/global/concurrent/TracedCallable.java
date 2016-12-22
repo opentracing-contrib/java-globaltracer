@@ -15,8 +15,6 @@ import java.util.logging.Logger;
  * Convenience {@link Callable} wrapper that will execute within a new {@link Span} if an
  * {@link #withOperationName(String) operationName} is provided.<br>
  * If no operationName is provided, the call will be executed without starting a new Span.
- *
- * @author Sjoerd Talsma
  */
 public class TracedCallable<T> implements Callable<T> {
     private static final Logger LOGGER = Logger.getLogger(TracedCallable.class.getName());
@@ -45,7 +43,7 @@ public class TracedCallable<T> implements Callable<T> {
     }
 
     protected Span startNewSpan() {
-        SpanBuilder spanBuilder = GlobalTracer.tracer().buildSpan(operationName);
+        SpanBuilder spanBuilder = GlobalTracer.get().buildSpan(operationName);
         if (parentContext != null) spanBuilder = spanBuilder.asChildOf(parentContext);
         return spanBuilder.start();
     }

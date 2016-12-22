@@ -9,8 +9,6 @@ import java.util.concurrent.Callable;
  * Convenience {@link Runnable} wrapper that will execute within a new {@link Span} if an
  * {@link #withOperationName(String) operationName} is provided.<br>
  * If no operationName is provided, the call will be executed without starting a new Span.
- *
- * @author Sjoerd Talsma
  */
 public class TracedRunnable implements Runnable {
 

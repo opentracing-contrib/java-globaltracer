@@ -19,12 +19,10 @@ import java.util.logging.Logger;
  * The {@linkplain GlobalTracer} forwards all methods to a single {@link Tracer} implementation that can be
  * instantiated in one of two ways:
  * <ol>
- * <li>Explicitly, by calling {@link #setTracer(Tracer)} with a configured tracer implementation, or:</li>
+ * <li>Explicitly, by calling {@link #set(Tracer)} with a configured tracer implementation, or:</li>
  * <li>Automatically by using the Java <code>ServiceLoader</code> SPI mechanism to load an implementation
  * from the classpath.</li>
  * </ol>
- *
- * @author Sjoerd Talsma
  */
 public final class GlobalTracer implements Tracer {
     private static final Logger LOGGER = Logger.getLogger(GlobalTracer.class.getName());
@@ -33,9 +31,8 @@ public final class GlobalTracer implements Tracer {
 
     /**
      * The resolved {@link Tracer} to delegate the global tracing implementation to.<br>
-     * This can be either an {@link #setTracer(Tracer) explicitly set delegate}
-     * or the automatically resolved Tracer implementation.<br>
-     * Management of this reference is the responsibility of the {@link #lazyTracer()} method.
+     * This can be either an {@link #set(Tracer) explicitly set delegate}
+     * or the automatically resolved Tracer implementation.
      */
     private final AtomicReference<Tracer> globalTracer = new AtomicReference<Tracer>();
 
@@ -61,7 +58,7 @@ public final class GlobalTracer implements Tracer {
      * Upon first use of any tracing method, this tracer lazily determines which actual {@link Tracer}
      * implementation to use:
      * <ol type="a">
-     * <li>If an explicitly configured tracer was provided via the {@link #setTracer(Tracer)} method,
+     * <li>If an explicitly configured tracer was provided via the {@link #set(Tracer)} method,
      * that will always take precedence over automatically provided tracer instances.</li>
      * <li>A Tracer implementation can be automatically provided using the Java {@link ServiceLoader} through the
      * <code>META-INF/services/io.opentracing.Tracer</code> service definition file.<br>
@@ -74,20 +71,20 @@ public final class GlobalTracer implements Tracer {
      *
      * @return The global tracer.
      */
-    public static Tracer tracer() {
+    public static Tracer get() {
         return INSTANCE;
     }
 
     /**
      * Explicit registration of a configured {@link Tracer} to back the behaviour
-     * of the {@link #tracer() global tracer}.
+     * of the {@link #get() global tracer}.
      * <p>
      * The previous global tracer is returned so it can be restored later if necessary.
      *
      * @param tracer Tracer to use as global tracer.
      * @return The previous global tracer.
      */
-    public static Tracer setTracer(final Tracer tracer) {
+    public static Tracer set(final Tracer tracer) {
         if (tracer instanceof GlobalTracer) {
             throw new IllegalArgumentException("Attempted to set the GlobalTracer as delegate of itself.");
         }

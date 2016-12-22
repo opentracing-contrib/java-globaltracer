@@ -14,34 +14,31 @@ import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 
-/**
- * @author Sjoerd Talsma
- */
 public class GlobalTracerTest {
 
     Tracer previousGlobalTracer;
 
     @Before
     public void setup() {
-        previousGlobalTracer = GlobalTracer.setTracer(null); // Reset lazy state and remember previous tracer.
+        previousGlobalTracer = GlobalTracer.set(null); // Reset lazy state and remember previous tracer.
     }
 
     @After
     public void teardown() {
-        GlobalTracer.setTracer(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
+        GlobalTracer.set(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
     }
 
     @Test
     public void testSingletonReference() {
-        Tracer tracer = GlobalTracer.tracer();
+        Tracer tracer = GlobalTracer.get();
         assertThat(tracer, is(instanceOf(GlobalTracer.class)));
-        assertThat(tracer, is(sameInstance(GlobalTracer.tracer())));
+        assertThat(tracer, is(sameInstance(GlobalTracer.get())));
     }
 
     @Test
     public void testSettingGlobalTracerAsOwnDelegate() {
         try {
-            GlobalTracer.setTracer(GlobalTracer.tracer());
+            GlobalTracer.set(GlobalTracer.get());
             fail("exception expected");
         } catch (IllegalArgumentException expected) {
             assertThat(expected.getMessage(), is(notNullValue()));
@@ -54,10 +51,10 @@ public class GlobalTracerTest {
      */
     @Test
     public void testServiceLoading() {
-        GlobalTracer.setTracer(null); // clear global tracer.
-        GlobalTracer.tracer().buildSpan("some operation"); // trigger lazy tracer service loading.
+        GlobalTracer.set(null); // clear global tracer.
+        GlobalTracer.get().buildSpan("some operation"); // trigger lazy tracer service loading.
 
-        Tracer loadedTracer = GlobalTracer.setTracer(null); // clear again, return current (loaded) tracer.
+        Tracer loadedTracer = GlobalTracer.set(null); // clear again, return current (loaded) tracer.
         assertThat(loadedTracer, is(instanceOf(MockTracer.class))); // MockTracer was configured.
     }
 
@@ -66,17 +63,17 @@ public class GlobalTracerTest {
      */
     @Test
     public void testExplicitSetting() {
-        GlobalTracer.tracer().buildSpan("some operation"); // trigger lazy tracer service loading.
+        GlobalTracer.get().buildSpan("some operation"); // trigger lazy tracer service loading.
         Tracer t1 = mock(Tracer.class), t2 = mock(Tracer.class);
         when(t1.buildSpan(anyString())).thenReturn(NoopSpanBuilder.INSTANCE);
         when(t2.buildSpan(anyString())).thenReturn(NoopSpanBuilder.INSTANCE);
 
-        GlobalTracer.setTracer(t1);
-        GlobalTracer.tracer().buildSpan("first operation");
-        GlobalTracer.tracer().buildSpan("second operation");
+        GlobalTracer.set(t1);
+        GlobalTracer.get().buildSpan("first operation");
+        GlobalTracer.get().buildSpan("second operation");
 
-        assertThat(GlobalTracer.setTracer(t2), is(sameInstance(t1)));
-        GlobalTracer.tracer().buildSpan("third operation");
+        assertThat(GlobalTracer.set(t2), is(sameInstance(t1)));
+        GlobalTracer.get().buildSpan("third operation");
 
         verify(t1).buildSpan("first operation");
         verify(t1).buildSpan("second operation");
