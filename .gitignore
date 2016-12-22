@@ -1,6 +1,7 @@
 # Build / maven artifacts
 *.class
 target/
+dependency-reduced-pom.xml
 pom.xml.versionsBackup
 
 # Mobile Tools for Java (J2ME)
