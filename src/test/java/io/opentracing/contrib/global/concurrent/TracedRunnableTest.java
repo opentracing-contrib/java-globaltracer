@@ -47,7 +47,7 @@ public class TracedRunnableTest {
         when(mockSpanBuilder.start()).thenReturn(NoopSpan.INSTANCE);
 
         final AtomicBoolean ran = new AtomicBoolean(false);
-        Future<?> result = threadpool.submit(TracedRunnable.of(new Runnable() {
+        Future<?> result = threadpool.submit(TracedRunnable.of("", new Runnable() {
             @Override
             public void run() {
                 ran.set(true);
@@ -68,12 +68,12 @@ public class TracedRunnableTest {
         when(mockSpanBuilder.start()).thenReturn(NoopSpan.INSTANCE);
 
         final AtomicBoolean ran = new AtomicBoolean(false);
-        Future<?> result = threadpool.submit(TracedRunnable.of(new Runnable() {
+        Future<?> result = threadpool.submit(TracedRunnable.of("testing", new Runnable() {
             @Override
             public void run() {
                 ran.set(true);
             }
-        }).withOperationName("testing"));
+        }));
 
         result.get(); // Block for result.
         assertThat(ran.get(), is(true));

@@ -1,16 +1,12 @@
 package io.opentracing.contrib.global;
 
 import io.opentracing.NoopTracerFactory;
-import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import io.opentracing.contrib.global.concurrent.TracedCallable;
-import io.opentracing.contrib.global.concurrent.TracedRunnable;
 import io.opentracing.propagation.Format;
 
 import java.util.Iterator;
 import java.util.ServiceLoader;
-import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -91,35 +87,6 @@ public final class GlobalTracer implements Tracer {
         Tracer previous = INSTANCE.globalTracer.getAndSet(tracer);
         logChangedTracer(tracer, previous);
         return previous;
-    }
-
-    /**
-     * Wraps the {@link Callable} to execute within a new {@link Span} if an
-     * {@link TracedCallable#withOperationName(String) operationName} is also specified.<br>
-     * If no operationName is provided, the callable will execute as-is without starting a new span.
-     *
-     * @param operationName Name of the traced operation.
-     * @param callable      Callable to wrap.
-     * @param <V>           Return type of the wrapped call.
-     * @return The wrapped call.
-     * @see TracedCallable#withOperationName(String)
-     */
-    public static <V> TracedCallable<V> traced(String operationName, Callable<V> callable) {
-        return TracedCallable.of(callable).withOperationName(operationName);
-    }
-
-    /**
-     * Wraps the {@link Runnable} to execute within a new {@link Span} if an
-     * {@link TracedCallable#withOperationName(String) operationName} is also specified.<br>
-     * If no operationName is provided, the callable will execute as-is without starting a new span.
-     *
-     * @param operationName Name of the traced operation.
-     * @param runnable      Runnable to wrap.
-     * @return The wrapped call.
-     * @see TracedRunnable#withOperationName(String)
-     */
-    public static TracedRunnable traced(String operationName, Runnable runnable) {
-        return TracedRunnable.of(runnable);
     }
 
     @Override

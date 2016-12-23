@@ -1,22 +1,19 @@
 package io.opentracing.contrib.global.concurrent;
 
-import io.opentracing.Span;
 import io.opentracing.SpanContext;
 
 import java.util.concurrent.Callable;
 
 /**
- * Convenience {@link Runnable} wrapper that will execute within a new {@link Span} if an
- * {@link #withOperationName(String) operationName} is provided.<br>
- * If no operationName is provided, the call will be executed without starting a new Span.
+ * TODO: Document TracedRunnable similar to {@link TracedCallable}
  */
-public class TracedRunnable implements Runnable {
+public final class TracedRunnable implements Runnable {
 
-    protected TracedCallable<Void> tracedCall;
+    private TracedCallable<Void> tracedCall;
 
-    protected TracedRunnable(final Runnable delegate) {
+    private TracedRunnable(String operationName, final Runnable delegate) {
         if (delegate == null) throw new NullPointerException("Runnable delegate is <null>.");
-        this.tracedCall = new TracedCallable<Void>(new Callable<Void>() {
+        this.tracedCall = new TracedCallable<Void>(operationName, new Callable<Void>() {
             @Override
             public Void call() throws Exception {
                 delegate.run();
@@ -25,13 +22,8 @@ public class TracedRunnable implements Runnable {
         });
     }
 
-    public static TracedRunnable of(Runnable delegate) {
-        return new TracedRunnable(delegate);
-    }
-
-    public TracedRunnable withOperationName(String operationName) {
-        this.tracedCall = tracedCall.withOperationName(operationName);
-        return this;
+    public static TracedRunnable of(String operationName, Runnable delegate) {
+        return new TracedRunnable(operationName, delegate);
     }
 
     public TracedRunnable asChildOf(SpanContext parent) {

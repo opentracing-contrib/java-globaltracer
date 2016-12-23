@@ -57,7 +57,7 @@ public class TracedCallableTest {
     @Test
     public void testOfNullDelegate() {
         try {
-            TracedCallable.of(null);
+            TracedCallable.of("", null);
             fail("Exception expected");
         } catch (RuntimeException expected) {
             assertThat(expected.getMessage(), not(nullValue()));
@@ -66,7 +66,7 @@ public class TracedCallableTest {
 
     @Test
     public void testWithoutOperationName() throws ExecutionException, InterruptedException {
-        Future<String> result = threadpool.submit(TracedCallable.of(new SimpleCallable()));
+        Future<String> result = threadpool.submit(TracedCallable.of("", new SimpleCallable()));
 
         assertThat(result.get(), is("called"));
         verify(mockTracer).buildSpan(""); // No operation name was provided.
@@ -77,7 +77,7 @@ public class TracedCallableTest {
     @Test
     public void testWithoutParentContext() throws ExecutionException, InterruptedException {
         Future<String> result = threadpool.submit(
-                TracedCallable.of(new SimpleCallable()).withOperationName("testing"));
+                TracedCallable.of("testing", new SimpleCallable()));
 
         assertThat(result.get(), is("called"));
         verify(mockTracer).buildSpan("testing");
@@ -88,7 +88,7 @@ public class TracedCallableTest {
     @Test
     public void testWithParentContext() throws ExecutionException, InterruptedException {
         Future<String> result = threadpool.submit(
-                TracedCallable.of(new SimpleCallable()).withOperationName("testing").asChildOf(mockParentContext));
+                TracedCallable.of("testing", new SimpleCallable()).asChildOf(mockParentContext));
 
         // Block for result.
         assertThat(result.get(), is("called"));
@@ -101,7 +101,7 @@ public class TracedCallableTest {
     @Test
     public void testFailingCall() throws ExecutionException, InterruptedException {
         Future<String> result = threadpool.submit(
-                TracedCallable.of(new FailingCallable()).withOperationName("testing"));
+                TracedCallable.of("testing", new FailingCallable()));
 
         try {
             result.get();
@@ -121,7 +121,7 @@ public class TracedCallableTest {
         reset(mockSpan);
         doThrow(new IllegalStateException("Already closed.")).when(mockSpan).close();
         Future<String> result = threadpool.submit(
-                TracedCallable.of(new SimpleCallable()).withOperationName("testing"));
+                TracedCallable.of("testing", new SimpleCallable()));
 
         try {
             result.get();
@@ -141,7 +141,7 @@ public class TracedCallableTest {
         reset(mockSpan);
         doThrow(new IllegalStateException("Already closed.")).when(mockSpan).close();
         Future<String> result = threadpool.submit(
-                TracedCallable.of(new FailingCallable()).withOperationName("testing"));
+                TracedCallable.of("testing", new FailingCallable()));
 
         try {
             result.get();
