@@ -58,8 +58,8 @@ public final class GlobalTracer implements Tracer {
      * that will always take precedence over automatically provided tracer instances.</li>
      * <li>A Tracer implementation can be automatically provided using the Java {@link ServiceLoader} through the
      * <code>META-INF/services/io.opentracing.Tracer</code> service definition file.<br>
-     * The {@linkplain GlobalTracer} class will not attempt to choose between implementations;
-     * if more than one is found by the {@link ServiceLoader service loader},
+     * The {@linkplain GlobalTracer} will not attempt to choose between implementations;
+     * if more than one is found by the {@linkplain ServiceLoader service loader},
      * a warning is logged and tracing is disabled by falling back to the default implementation:</li>
      * <li>If no tracer implementation is available, the {@link io.opentracing.NoopTracer NoopTracer}
      * will be used.</li>

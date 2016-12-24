@@ -39,17 +39,7 @@ Once initialized, all application code can instrument tracing by starting new sp
 If no GlobalTracer is configured, this code will not throw any exceptions.
 Tracing is simply delegated to the `NoopTracer` instead.
 
-### Tracing code in background threads
-For convenience, the class `TracedCallable` is provided that will trace a delegate `Callable`
-using a new `Span` from the `GlobalTracer`.
-The syntax is similar to starting a trace in the current thread:
-````java
-    Callable<?> call = ...traced block of code...
-    Future<?> future = executor.submit(TracedCallable.of("myOperation", call));
-````
-There is also a similar `TracedRunnable` class.
-
 ### Automatic Span propagation
-This library only provides access to a global tracer and _does not_ manage any span propagation.  
+This library _does not_ manage any span propagation.  
 Consider combining this library with the [ActiveSpan library](https://github.com/opentracing-contrib/java-activespan)
 if you want to implicitly manage and access the active span in your application.
