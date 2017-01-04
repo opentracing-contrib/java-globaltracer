@@ -12,12 +12,18 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The {@linkplain GlobalTracer} forwards all methods to a single {@link Tracer} implementation that can be
- * instantiated in one of two ways:
+ * Forwards all methods to another tracer that can be configured in one of two ways:
  * <ol>
- * <li>Explicitly, by calling {@link #set(Tracer)} with a configured tracer implementation, or:</li>
- * <li>Automatically by using the Java <code>ServiceLoader</code> SPI mechanism to load an implementation
- * from the classpath.</li>
+ * <li>Explicitly, calling {@link #set(Tracer)} with a configured tracer, or:</li>
+ * <li>Automatically using the Java {@link ServiceLoader} SPI mechanism to load a {@link Tracer} from the classpath.</li>
+ * </ol>
+ * <p>
+ * When the tracer is needed it is lazily looked up using the following rules:
+ * <ol type="a">
+ * <li>The last-{@link #set(Tracer) set} tracer always takes precedence.</li>
+ * <li>If no tracer was set, one is looked up from the {@link ServiceLoader}.<br>
+ * The {@linkplain GlobalTracer} will not attempt to choose between implementations:</li>
+ * <li>If no single implementation is found, the {@link io.opentracing.NoopTracer NoopTracer} will be used.</li>
  * </ol>
  */
 public final class GlobalTracer implements Tracer {
@@ -53,40 +59,33 @@ public final class GlobalTracer implements Tracer {
             }
             LOGGER.log(Level.INFO, "Using GlobalTracer implementation: {0}.", instance);
         }
-        LOGGER.log(Level.FINEST, "GlobalTracer: {0}.", instance);
         return instance;
     }
 
     /**
-     * Returns the {@linkplain GlobalTracer} instance.
-     * Upon first use of any tracing method, this tracer lazily determines which actual {@link Tracer}
-     * implementation to use:
-     * <ol type="a">
-     * <li>If an explicitly configured tracer was provided via the {@link #set(Tracer)} method,
-     * that will always take precedence over automatically resolved tracer instances.</li>
-     * <li>A Tracer implementation can be automatically provided using the Java {@link ServiceLoader} through the
-     * <code>META-INF/services/io.opentracing.Tracer</code> service definition file.<br>
-     * The {@linkplain GlobalTracer} will not attempt to choose between implementations;
-     * if more than one is found by the {@linkplain ServiceLoader service loader},
-     * a warning is logged and tracing is disabled by falling back to the default implementation:</li>
-     * <li>If no tracer implementation is available, the {@link io.opentracing.NoopTracer NoopTracer}
-     * will be used.</li>
-     * </ol>
+     * Returns the constant {@linkplain GlobalTracer}.
+     * <p>
+     * All methods are forwarded to the currently configured tracer.<br>
+     * Until a tracer is {@link #set(Tracer) explicitly configured},
+     * one is looked up from the {@link ServiceLoader},
+     * falling back to the {@link io.opentracing.NoopTracer NoopTracer}.<br>
+     * A tracer can be re-configured at any time.
+     * For example, the tracer used to extract a span may be different than the one that injects it.
      *
-     * @return The global tracer.
+     * @return The global tracer constant.
+     * @see #set(Tracer)
      */
     public static Tracer get() {
         return INSTANCE;
     }
 
     /**
-     * Explicit registration of a configured {@link Tracer} to back the behaviour
-     * of the {@link #get() global tracer}.
+     * Explicitly configures a {@link Tracer} to back the behaviour of the {@link #get() global tracer}.
      * <p>
      * The previous global tracer is returned so it can be restored later if necessary.
      *
      * @param tracer Tracer to use as global tracer.
-     * @return The previous global tracer.
+     * @return The previous global tracer or <code>null</code> if there was none.
      */
     public static Tracer set(final Tracer tracer) {
         if (tracer instanceof GlobalTracer) {
@@ -94,7 +93,7 @@ public final class GlobalTracer implements Tracer {
             return INSTANCE.globalTracer.get(); // no-op, return 'previous' tracer.
         }
         Tracer previous = INSTANCE.globalTracer.getAndSet(tracer);
-        logChangedTracer(tracer, previous);
+        LOGGER.log(Level.INFO, "Set GlobalTracer to {0} (previously {1}).", new Object[]{tracer, previous});
         return previous;
     }
 
@@ -131,20 +130,6 @@ public final class GlobalTracer implements Tracer {
                     "Falling back to NoopTracer implementation.");
         }
         return NoopTracerFactory.create();
-    }
-
-    private static void logChangedTracer(Tracer newTracer, Tracer oldTracer) {
-        Level loglevel = Level.INFO;
-        String message = "Replaced GlobalTracer {1} with {0}.";
-        if (newTracer == null) {
-            message = "Cleared GlobalTracer registration.";
-            if (oldTracer == null) loglevel = Level.FINEST;
-        } else if (oldTracer == null) {
-            message = "Set GlobalTracer: {0}.";
-        } else if (newTracer.equals(oldTracer)) {
-            loglevel = Level.FINEST;
-        }
-        LOGGER.log(loglevel, message, new Object[]{newTracer, oldTracer});
     }
 
 }
