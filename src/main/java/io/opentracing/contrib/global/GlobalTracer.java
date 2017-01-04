@@ -141,6 +141,8 @@ public final class GlobalTracer implements Tracer {
             if (oldTracer == null) loglevel = Level.FINEST;
         } else if (oldTracer == null) {
             message = "Set GlobalTracer: {0}.";
+        } else if (newTracer.equals(oldTracer)) {
+            loglevel = Level.FINEST;
         }
         LOGGER.log(loglevel, message, new Object[]{newTracer, oldTracer});
     }
