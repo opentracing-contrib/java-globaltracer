@@ -35,14 +35,13 @@ public class GlobalTracerTest {
         assertThat(tracer, is(sameInstance(GlobalTracer.get())));
     }
 
+    /** Setting the GlobalTracer as its own delegate should be a no-op. */
     @Test
-    public void testSettingGlobalTracerAsOwnDelegate() {
-        try {
-            GlobalTracer.set(GlobalTracer.get());
-            fail("exception expected");
-        } catch (IllegalArgumentException expected) {
-            assertThat(expected.getMessage(), is(notNullValue()));
-        }
+    public void testSetGlobalTracerAsItsOwnDelegate() {
+        Tracer result1 = GlobalTracer.set(GlobalTracer.get());
+        Tracer result2 = GlobalTracer.set(GlobalTracer.get());
+        assertThat(result1, is(sameInstance(previousGlobalTracer)));
+        assertThat(result2, is(sameInstance(previousGlobalTracer)));
     }
 
     /**

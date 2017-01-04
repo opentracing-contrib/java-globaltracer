@@ -82,7 +82,8 @@ public final class GlobalTracer implements Tracer {
      */
     public static Tracer set(final Tracer tracer) {
         if (tracer instanceof GlobalTracer) {
-            throw new IllegalArgumentException("Attempted to set the GlobalTracer as delegate of itself.");
+            LOGGER.log(Level.FINE, "Attempted to set the GlobalTracer as delegate of itself.");
+            return INSTANCE.globalTracer.get(); // no-op, return 'previous' tracer.
         }
         Tracer previous = INSTANCE.globalTracer.getAndSet(tracer);
         logChangedTracer(tracer, previous);
