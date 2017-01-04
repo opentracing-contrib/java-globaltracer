@@ -15,7 +15,7 @@
     <name>Global Tracer resolution</name>
     <description>Library to obtain a Tracer reference from anywhere in your application</description>
     <url>https://github.com/opentracing-contrib/java-globaltracer</url>
-    <inceptionYear>2016</inceptionYear>
+    <inceptionYear>2017</inceptionYear>
 
     <licenses>
         <license>
