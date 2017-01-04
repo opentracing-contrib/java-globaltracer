@@ -23,6 +23,14 @@ import java.util.logging.Logger;
 public final class GlobalTracer implements Tracer {
     private static final Logger LOGGER = Logger.getLogger(GlobalTracer.class.getName());
 
+    /**
+     * Singleton instance.
+     * <p>
+     * Since we cannot prevent people using {@linkplain #get() GlobalTracer.get()} as a constant,
+     * this guarantees that references obtained before, during or after initialization
+     * all behave as if obtained <em>after</em> initialization once properly initialized.<br>
+     * As a minor additional benefit it makes it harder to circumvent the {@link Tracer} API.
+     */
     private static final GlobalTracer INSTANCE = new GlobalTracer();
 
     /**
