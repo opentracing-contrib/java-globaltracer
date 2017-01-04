@@ -3,16 +3,12 @@ Global Tracer, forwarding to another Tracer implementation.
 
 ## GlobalTracer
 Provides the `GlobalTracer.get()` method that returns the singleton _global tracer_.  
-Upon first use of any tracing method, this tracer lazily determines which `Tracer`
-implementation to use:  
- 1. If an explicitly configured tracer was provided via the `GlobalTracer.set()` method,
-    that will always take precedence over automatically resolved tracer instances.  
- 2. A Tracer implementation can be automatically provided using the Java `ServiceLoader` through the
-    `META-INF/services/io.opentracing.Tracer` service definition file.
-    The GlobalTracer class will not attempt to choose between implementations;
-    if more than one is found, a warning is logged and tracing is disabled by
-    falling back to the default implementation:  
- 3. If no tracer implementation is found, the `NoopTracer` will be used.
+
+When the tracer is needed it is lazily looked up using the following rules:
+ 1. The last `set()` tracer always takes precedence.</li>
+ 2. If no tracer was set, one is looked up from the `ServiceLoader`.  
+    The GlobalTracer will not attempt to choose between implementations:
+ 3. If no single implementation is found, the `NoopTracer` will be used.
 
 ## How to use this library
 Some examples on how this library can be used:
