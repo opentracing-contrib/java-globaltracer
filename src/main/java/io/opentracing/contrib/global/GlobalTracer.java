@@ -38,7 +38,7 @@ public final class GlobalTracer implements Tracer {
     private Tracer lazyTracer() {
         Tracer instance = globalTracer.get();
         if (instance == null) {
-            final Tracer singleton = loadSingleton();
+            final Tracer singleton = loadSingleSpiImplementation();
             while (instance == null && singleton != null) { // for race condition only, should rarely happen.
                 globalTracer.compareAndSet(null, singleton);
                 instance = globalTracer.get();
@@ -110,28 +110,19 @@ public final class GlobalTracer implements Tracer {
      *
      * @return The single service or a NoopTracer.
      */
-    private static Tracer loadSingleton() {
-        Tracer foundSingleton = null;
-        for (Iterator<Tracer> implementations =
-             ServiceLoader.load(Tracer.class, Tracer.class.getClassLoader()).iterator();
-             foundSingleton == null && implementations.hasNext(); ) {
-            final Tracer implementation = implementations.next();
-            if (implementation != null && !(implementation instanceof GlobalTracer)) {
-                LOGGER.log(Level.FINEST, "Tracer service loaded: {0}.", implementation);
-                if (implementations.hasNext()) { // Don't actually load the next implementation, fall-back to default.
-                    LOGGER.log(Level.WARNING, "More than one Tracer service implementation found. " +
-                            "Falling back to NoopTracer implementation.");
-                    foundSingleton = NoopTracerFactory.create();
-                } else {
-                    foundSingleton = implementation;
-                }
+    private static Tracer loadSingleSpiImplementation() {
+        // Use the ServiceLoader to find the declared Tracer implementation.
+        Iterator<Tracer> spiImplementations =
+                ServiceLoader.load(Tracer.class, Tracer.class.getClassLoader()).iterator();
+        if (spiImplementations.hasNext()) {
+            Tracer foundImplementation = spiImplementations.next();
+            if (!spiImplementations.hasNext()) {
+                return foundImplementation;
             }
+            LOGGER.log(Level.WARNING, "More than one Tracer service implementation found. " +
+                    "Falling back to NoopTracer implementation.");
         }
-        if (foundSingleton == null) {
-            LOGGER.log(Level.FINEST, "No Tracer service implementation found. Falling back to NoopTracer implementation.");
-            foundSingleton = NoopTracerFactory.create();
-        }
-        return foundSingleton;
+        return NoopTracerFactory.create();
     }
 
     private static void logChangedTracer(Tracer newTracer, Tracer oldTracer) {
