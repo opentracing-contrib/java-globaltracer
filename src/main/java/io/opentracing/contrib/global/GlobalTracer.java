@@ -47,7 +47,7 @@ public final class GlobalTracer implements Tracer {
         Tracer instance = globalTracer.get();
         if (instance == null) {
             final Tracer singleton = loadSingleSpiImplementation();
-            while (instance == null && singleton != null) { // for race condition only, should rarely happen.
+            while (instance == null && singleton != null) { // handle rare race condition
                 globalTracer.compareAndSet(null, singleton);
                 instance = globalTracer.get();
             }
@@ -63,7 +63,7 @@ public final class GlobalTracer implements Tracer {
      * implementation to use:
      * <ol type="a">
      * <li>If an explicitly configured tracer was provided via the {@link #set(Tracer)} method,
-     * that will always take precedence over automatically provided tracer instances.</li>
+     * that will always take precedence over automatically resolved tracer instances.</li>
      * <li>A Tracer implementation can be automatically provided using the Java {@link ServiceLoader} through the
      * <code>META-INF/services/io.opentracing.Tracer</code> service definition file.<br>
      * The {@linkplain GlobalTracer} will not attempt to choose between implementations;

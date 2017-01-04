@@ -6,7 +6,7 @@ Provides the `GlobalTracer.get()` method that returns the singleton _global trac
 Upon first use of any tracing method, this tracer lazily determines which `Tracer`
 implementation to use:  
  1. If an explicitly configured tracer was provided via the `GlobalTracer.set()` method,
-    that will always take precedence over automatically provided tracer instances.  
+    that will always take precedence over automatically resolved tracer instances.  
  2. A Tracer implementation can be automatically provided using the Java `ServiceLoader` through the
     `META-INF/services/io.opentracing.Tracer` service definition file.
     The GlobalTracer class will not attempt to choose between implementations;
