@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  * <li>The last-{@link #register(Tracer) registered} tracer always takes precedence.</li>
  * <li>If no tracer was registered, one is looked up from the {@link ServiceLoader}.<br>
  * The {@linkplain GlobalTracer} will not attempt to choose between implementations:</li>
- * <li>If no single implementation is found, the {@link io.opentracing.NoopTracer NoopTracer} will be used.</li>
+ * <li>If no single tracer service is found, the {@link io.opentracing.NoopTracer NoopTracer} will be used.</li>
  * </ol>
  */
 public final class GlobalTracer implements Tracer {
@@ -42,8 +42,9 @@ public final class GlobalTracer implements Tracer {
     /**
      * The resolved {@link Tracer} to delegate to.
      * <p>
-     * This can be either an {@link #register(Tracer) explicitly registered delegate}
-     * or the automatically {@link #loadSingleSpiImplementation() resolved} Tracer implementation.
+     * This can be either an {@link #register(Tracer) explicitly registered} or
+     * the {@link #loadSingleSpiImplementation() automatically resolved} Tracer
+     * (or <code>null</code> during initialization).
      */
     private final AtomicReference<Tracer> globalTracer = new AtomicReference<Tracer>();
 
@@ -58,7 +59,7 @@ public final class GlobalTracer implements Tracer {
                 globalTracer.compareAndSet(null, resolved);
                 tracer = globalTracer.get();
             }
-            LOGGER.log(Level.INFO, "Using GlobalTracer implementation: {0}.", tracer);
+            LOGGER.log(Level.INFO, "Using GlobalTracer: {0}.", tracer);
         }
         return tracer;
     }
@@ -127,7 +128,7 @@ public final class GlobalTracer implements Tracer {
             if (!spiImplementations.hasNext()) {
                 return foundImplementation;
             }
-            LOGGER.log(Level.WARNING, "More than one Tracer service implementation found. " +
+            LOGGER.log(Level.WARNING, "More than one Tracer service found. " +
                     "Falling back to NoopTracer implementation.");
         }
         return NoopTracerFactory.create();
