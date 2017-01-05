@@ -5,7 +5,7 @@ Global Tracer, forwarding to another Tracer implementation.
 Provides the `GlobalTracer.get()` method that returns the singleton _global tracer_.  
 
 When the tracer is needed it is lazily looked up using the following rules:
- 1. The tracer form the last `register(tracer)` call always takes precedence.</li>
+ 1. The tracer from the last `register(tracer)` call always takes precedence.</li>
  2. If no tracer was registered, one is looked up from the `ServiceLoader`.  
     The GlobalTracer will not attempt to choose between implementations:
  3. If no single implementation is found, the `NoopTracer` will be used.
