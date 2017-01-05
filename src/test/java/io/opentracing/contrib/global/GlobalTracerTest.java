@@ -45,6 +45,31 @@ public class GlobalTracerTest {
         assertThat("Resolved Tracer service", resolvedTracer, is(instanceOf(MockTracer.class)));
     }
 
+    @Test
+    public void testGet_AutomaticServiceLoading_Concurrent() throws InterruptedException {
+        int threadCount = 10;
+        Thread[] threads = new Thread[threadCount];
+        final Tracer[] resolvedTracers = new Tracer[threadCount];
+        for (int i = 0; i < threadCount; i++) {
+            final int idx = i;
+            threads[i] = new Thread() {
+                @Override
+                public void run() {
+                    GlobalTracer.get().buildSpan("some operation"); // trigger lazy tracer resolution.
+                    resolvedTracers[idx] = GlobalTracer.register(GlobalTracer.get()); // no-op returning tracer
+                }
+            };
+        }
+
+        assertThat("Nothing happened yet", identityCount(null, resolvedTracers), is(threadCount));
+        // Start threads & wait for completion
+        for (int i = 0; i < threadCount; i++) threads[i].start();
+        for (int i = 0; i < threadCount; i++) threads[i].join(1000);
+
+        assertThat("Resolved tracer", resolvedTracers[0], is(instanceOf(MockTracer.class)));
+        assertThat("Resolved identical in all threads", identityCount(resolvedTracers[0], resolvedTracers), is(threadCount));
+    }
+
     /**
      * Registering an explicit tracer implementation should take precedence, no matter what the global tracer was before.
      */
