@@ -40,9 +40,10 @@ public final class GlobalTracer implements Tracer {
     private static final GlobalTracer INSTANCE = new GlobalTracer();
 
     /**
-     * The resolved {@link Tracer} to delegate the global tracing implementation to.<br>
+     * The resolved {@link Tracer} to delegate to.
+     * <p>
      * This can be either an {@link #register(Tracer) explicitly registered delegate}
-     * or the automatically resolved Tracer implementation.
+     * or the automatically {@link #loadSingleSpiImplementation() resolved} Tracer implementation.
      */
     private final AtomicReference<Tracer> globalTracer = new AtomicReference<Tracer>();
 
@@ -50,16 +51,16 @@ public final class GlobalTracer implements Tracer {
     }
 
     private Tracer lazyTracer() {
-        Tracer instance = globalTracer.get();
-        if (instance == null) {
-            final Tracer singleton = loadSingleSpiImplementation();
-            while (instance == null && singleton != null) { // handle rare race condition
-                globalTracer.compareAndSet(null, singleton);
-                instance = globalTracer.get();
+        Tracer tracer = globalTracer.get();
+        if (tracer == null) {
+            final Tracer resolved = loadSingleSpiImplementation();
+            while (tracer == null && resolved != null) { // handle rare race condition
+                globalTracer.compareAndSet(null, resolved);
+                tracer = globalTracer.get();
             }
-            LOGGER.log(Level.INFO, "Using GlobalTracer implementation: {0}.", instance);
+            LOGGER.log(Level.INFO, "Using GlobalTracer implementation: {0}.", tracer);
         }
-        return instance;
+        return tracer;
     }
 
     /**
