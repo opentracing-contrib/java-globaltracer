@@ -19,12 +19,12 @@ public class GlobalTracerTest {
 
     @Before
     public void setup() {
-        previousGlobalTracer = GlobalTracer.set(null); // Reset lazy state and remember previous tracer.
+        previousGlobalTracer = GlobalTracer.register(null); // Reset lazy state and remember previous tracer.
     }
 
     @After
     public void teardown() {
-        GlobalTracer.set(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
+        GlobalTracer.register(previousGlobalTracer instanceof NoopTracer ? null : previousGlobalTracer);
     }
 
     @Test
@@ -41,25 +41,25 @@ public class GlobalTracerTest {
     @Test
     public void testGet_AutomaticServiceLoading() {
         GlobalTracer.get().buildSpan("some operation"); // triggers lazy tracer resolution.
-        Tracer resolvedTracer = GlobalTracer.set(null); // clear again, returning current (auto-resolved) tracer.
+        Tracer resolvedTracer = GlobalTracer.register(null); // clear again, returning current (auto-resolved) tracer.
         assertThat("Resolved Tracer service", resolvedTracer, is(instanceOf(MockTracer.class)));
     }
 
     /**
-     * Setting an explicit tracer implementation should take preference of whatever the global tracer was at that time.
+     * Registering an explicit tracer implementation should take precedence, no matter what the global tracer was before.
      */
     @Test
-    public void testGet_AfterSets() {
+    public void testGet_AfterRegister() {
         GlobalTracer.get().buildSpan("some operation"); // trigger lazy tracer service loading.
         Tracer t1 = mock(Tracer.class), t2 = mock(Tracer.class);
         when(t1.buildSpan(anyString())).thenReturn(NoopSpanBuilder.INSTANCE);
         when(t2.buildSpan(anyString())).thenReturn(NoopSpanBuilder.INSTANCE);
 
-        GlobalTracer.set(t1);
+        GlobalTracer.register(t1);
         GlobalTracer.get().buildSpan("first operation");
         GlobalTracer.get().buildSpan("second operation");
 
-        assertThat(GlobalTracer.set(t2), is(sameInstance(t1)));
+        assertThat(GlobalTracer.register(t2), is(sameInstance(t1)));
         GlobalTracer.get().buildSpan("third operation");
 
         verify(t1).buildSpan(eq("first operation"));
@@ -69,18 +69,18 @@ public class GlobalTracerTest {
     }
 
     /**
-     * Setting the GlobalTracer as its own delegate should be a no-op.
+     * Registering the GlobalTracer as its own delegate should be a no-op.
      */
     @Test
-    public void testSet_GlobalTracerAsItsOwnDelegate() {
-        Tracer result1 = GlobalTracer.set(GlobalTracer.get());
-        Tracer result2 = GlobalTracer.set(GlobalTracer.get());
+    public void testRegister_GlobalTracerAsItsOwnDelegate() {
+        Tracer result1 = GlobalTracer.register(GlobalTracer.get());
+        Tracer result2 = GlobalTracer.register(GlobalTracer.get());
         assertThat(result1, is(sameInstance(previousGlobalTracer)));
         assertThat(result2, is(sameInstance(previousGlobalTracer)));
     }
 
     @Test
-    public void testSet_ConcurrentThreads() throws InterruptedException {
+    public void testRegister_ConcurrentThreads() throws InterruptedException {
         final int threadCount = 10;
         final Tracer[] tracers = new Tracer[threadCount];
         final Tracer[] previous = new Tracer[threadCount];
@@ -92,21 +92,22 @@ public class GlobalTracerTest {
             threads[idx] = new Thread() {
                 @Override
                 public void run() {
-                    previous[idx] = GlobalTracer.set(tracers[idx]);
+                    previous[idx] = GlobalTracer.register(tracers[idx]);
                 }
             };
         }
 
         assertThat("Nothing happened yet", identityCount(null, previous), is(threadCount));
-        // Start threads & wait
+        // Start threads & wait for completion
         for (int i = 0; i < threadCount; i++) threads[i].start();
         for (int i = 0; i < threadCount; i++) threads[i].join(1000);
 
-        final Tracer last = GlobalTracer.set(null); // last-set tracer ('previous' of new reset).
         assertThat("Previous of first is null", identityCount(null, previous), is(1));
+        final Tracer last = GlobalTracer.register(null); // last-register tracer ('previous' of new tracer null).
         assertThat("Last must be from tracers", identityCount(last, tracers), is(1));
+        assertThat("Last is no previous tracer", identityCount(last, previous), is(0));
         for (int i = 0; i < threadCount; i++) {
-            if (last != tracers[i]) { // All non-last tracers should be in previous once!
+            if (last != tracers[i]) { // All non-last tracers should be previous exactly once!
                 assertThat("Occurrences in previous", identityCount(tracers[i], previous), is(1));
             }
         }

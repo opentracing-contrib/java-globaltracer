@@ -14,14 +14,14 @@ import java.util.logging.Logger;
 /**
  * Forwards all methods to another tracer that can be configured in one of two ways:
  * <ol>
- * <li>Explicitly, calling {@link #set(Tracer)} with a configured tracer, or:</li>
+ * <li>Explicitly, calling {@link #register(Tracer)} with a configured tracer, or:</li>
  * <li>Automatically using the Java {@link ServiceLoader} SPI mechanism to load a {@link Tracer} from the classpath.</li>
  * </ol>
  * <p>
  * When the tracer is needed it is lazily looked up using the following rules:
  * <ol type="a">
- * <li>The last-{@link #set(Tracer) set} tracer always takes precedence.</li>
- * <li>If no tracer was set, one is looked up from the {@link ServiceLoader}.<br>
+ * <li>The last-{@link #register(Tracer) registered} tracer always takes precedence.</li>
+ * <li>If no tracer was registered, one is looked up from the {@link ServiceLoader}.<br>
  * The {@linkplain GlobalTracer} will not attempt to choose between implementations:</li>
  * <li>If no single implementation is found, the {@link io.opentracing.NoopTracer NoopTracer} will be used.</li>
  * </ol>
@@ -41,7 +41,7 @@ public final class GlobalTracer implements Tracer {
 
     /**
      * The resolved {@link Tracer} to delegate the global tracing implementation to.<br>
-     * This can be either an {@link #set(Tracer) explicitly set delegate}
+     * This can be either an {@link #register(Tracer) explicitly registered delegate}
      * or the automatically resolved Tracer implementation.
      */
     private final AtomicReference<Tracer> globalTracer = new AtomicReference<Tracer>();
@@ -66,14 +66,14 @@ public final class GlobalTracer implements Tracer {
      * Returns the constant {@linkplain GlobalTracer}.
      * <p>
      * All methods are forwarded to the currently configured tracer.<br>
-     * Until a tracer is {@link #set(Tracer) explicitly configured},
+     * Until a tracer is {@link #register(Tracer) explicitly configured},
      * one is looked up from the {@link ServiceLoader},
      * falling back to the {@link io.opentracing.NoopTracer NoopTracer}.<br>
      * A tracer can be re-configured at any time.
      * For example, the tracer used to extract a span may be different than the one that injects it.
      *
      * @return The global tracer constant.
-     * @see #set(Tracer)
+     * @see #register(Tracer)
      */
     public static Tracer get() {
         return INSTANCE;
@@ -87,13 +87,13 @@ public final class GlobalTracer implements Tracer {
      * @param tracer Tracer to use as global tracer.
      * @return The previous global tracer or <code>null</code> if there was none.
      */
-    public static Tracer set(final Tracer tracer) {
+    public static Tracer register(final Tracer tracer) {
         if (tracer instanceof GlobalTracer) {
-            LOGGER.log(Level.FINE, "Attempted to set the GlobalTracer as delegate of itself.");
+            LOGGER.log(Level.FINE, "Attempted to register the GlobalTracer as delegate of itself.");
             return INSTANCE.globalTracer.get(); // no-op, return 'previous' tracer.
         }
         Tracer previous = INSTANCE.globalTracer.getAndSet(tracer);
-        LOGGER.log(Level.INFO, "Set GlobalTracer to {0} (previously {1}).", new Object[]{tracer, previous});
+        LOGGER.log(Level.INFO, "Registered GlobalTracer {0} (previously {1}).", new Object[]{tracer, previous});
         return previous;
     }
 
