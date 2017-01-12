@@ -12,7 +12,7 @@ https://github.com/opentracing-contrib/java-globaltracer/blob/master/LICENSE
 All files are released with the Apache 2.0 license.
 
 If you are adding a new file it should have a header like below.  
-This can be automatically added by running `./mvnw :license:format`.
+This can be automatically added by running `./mvnw license:format`.
 
 ```
 /**
