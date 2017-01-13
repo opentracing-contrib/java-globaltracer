@@ -1,5 +1,7 @@
-# java-globaltracer
-Global Tracer, forwarding to another Tracer implementation.
+[![Build Status][ci-img]][ci] [![Released Version][maven-img]][maven]
+
+# Global tracer resolution for Java
+Global Tracer forwarding to another Tracer implementation.
 
 ## GlobalTracer
 Provides the `GlobalTracer.get()` method that returns the singleton _global tracer_.  
@@ -36,3 +38,8 @@ Tracing is simply delegated to the `NoopTracer` instead.
 This library _does not_ manage any span propagation.  
 Consider combining this library with the [ActiveSpan library](https://github.com/opentracing-contrib/java-activespan)
 if you want to implicitly manage and access the active span in your application.
+
+  [ci-img]: https://img.shields.io/travis/opentracing-contrib/java-globaltracer/master.svg
+  [ci]: https://travis-ci.org/opentracing-contrib/java-globaltracer
+  [maven-img]: https://img.shields.io/maven-central/v/io.opentracing.contrib/java-globaltracer.svg
+  [maven]: http://search.maven.org/#search%7Cga%7C1%7Cjava-globaltracer
