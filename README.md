@@ -36,7 +36,7 @@ Tracing is simply delegated to the `NoopTracer` instead.
 
 ### Automatic Span propagation
 This library _does not_ manage any span propagation.  
-Consider combining this library with the [ActiveSpan library](https://github.com/opentracing-contrib/java-activespan)
+Consider combining this library with the [SpanManager library](https://github.com/opentracing-contrib/java-spanmanager)
 if you want to implicitly manage and access the active span in your application.
 
   [ci-img]: https://img.shields.io/travis/opentracing-contrib/java-globaltracer/master.svg
