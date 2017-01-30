@@ -41,5 +41,5 @@ if you want to implicitly manage and access the active span in your application.
 
   [ci-img]: https://img.shields.io/travis/opentracing-contrib/java-globaltracer/master.svg
   [ci]: https://travis-ci.org/opentracing-contrib/java-globaltracer
-  [maven-img]: https://img.shields.io/maven-central/v/io.opentracing.contrib/java-globaltracer.svg
-  [maven]: http://search.maven.org/#search%7Cga%7C1%7Cjava-globaltracer
+  [maven-img]: https://img.shields.io/maven-central/v/io.opentracing.contrib/opentracing-globaltracer.svg
+  [maven]: http://search.maven.org/#search%7Cga%7C1%7Copentracing-globaltracer
