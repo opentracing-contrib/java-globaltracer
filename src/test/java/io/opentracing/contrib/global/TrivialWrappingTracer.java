@@ -47,7 +47,7 @@ final class TrivialWrappingTracer implements Tracer {
     final Tracer wrapped;
 
     TrivialWrappingTracer(Tracer delegate) {
-        if (delegate == null) throw new NullPointerException("Cannor wrap <null> Tracer.");
+        if (delegate == null) throw new NullPointerException("Cannot wrap <null> Tracer.");
         this.wrapped = delegate;
         LOGGER.log(Level.FINE, "New {0} created.", this);
     }

@@ -41,8 +41,8 @@ To register a new tracer, based on the current registered tracer, use the `Globa
 ```
 
 This creates a wrapper around the actual underlying `Tracer` implementation.  
-A wrapper around `GlobalTracer` itself should not be registered as that will result in an infinite recursive cycle
-when accessed.
+A wrapper around the `GlobalTracer` singleton itself should not be registered as that will result in 
+an infinite recursive cycle when accessed.
 
 ### Automatic Span propagation
 This library _does not_ manage any span propagation.  
