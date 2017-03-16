@@ -33,7 +33,8 @@ import java.util.logging.Logger;
  * <p>
  * When the tracer is needed it is lazily looked up using the following rules:
  * <ol type="a">
- * <li>The last-{@link #register(Tracer) registered} tracer always takes precedence.</li>
+ * <li>The last {@link #register(Tracer) registered} or {@link #update(UpdateFunction) updated} tracer
+ * always takes precedence.</li>
  * <li>If no tracer was registered, one is looked up from the {@link ServiceLoader}.<br>
  * The {@linkplain GlobalTracer} will not attempt to choose between implementations:</li>
  * <li>If no single tracer service is found, the {@link io.opentracing.NoopTracer NoopTracer} will be used.</li>
@@ -41,6 +42,27 @@ import java.util.logging.Logger;
  */
 public final class GlobalTracer implements Tracer {
     private static final Logger LOGGER = Logger.getLogger(GlobalTracer.class.getName());
+
+    /**
+     * Function to update the global tracer.
+     * <p>
+     * In Java 8 terms, this would be a {@code Function<Tracer, Tracer>}.
+     *
+     * @see GlobalTracer#update(UpdateFunction)
+     */
+    public interface UpdateFunction {
+        /**
+         * Update the registered global {@link Tracer} instance.
+         * <p>
+         * This allows updating the {@linkplain GlobalTracer} with a {@linkplain Tracer}
+         * that is 'based on' the current registered tracer, allowing delegation or wrapping
+         * tracers to be registered independently from underlying implementaitons.
+         *
+         * @param current The current GlobalTracer implementation (never <code>null</code>).
+         * @return The tracer to become the new GlobalTracer implementation, must be non-null.
+         */
+        Tracer apply(Tracer current);
+    }
 
     /**
      * Singleton instance.
@@ -110,6 +132,33 @@ public final class GlobalTracer implements Tracer {
         Tracer previous = INSTANCE.globalTracer.getAndSet(tracer);
         LOGGER.log(Level.INFO, "Registered GlobalTracer {0} (previously {1}).", new Object[]{tracer, previous});
         return previous;
+    }
+
+    /**
+     * Updates the global tracer using the specified {@link UpdateFunction}.
+     * <p>
+     * If the update encounters a race condition, the 'losing' update function is re-applied with the 'winning' tracer.
+     * To avoid concurrency 'hotspins', please make sure the {@linkplain UpdateFunction} is reasonably quick.
+     * <p>
+     * If there are concurrent modifications of the globaltracer (e.g. by a race-condition with a call to
+     * {@link #register(Tracer) register}, the update function will be)
+     *
+     * @param updateFunction The function to update the globaltracer implementation with.
+     */
+    public static void update(UpdateFunction updateFunction) {
+        if (updateFunction != null) {
+            Tracer current, updated;
+            do {
+                current = INSTANCE.lazyTracer();
+                updated = updateFunction.apply(current);
+                if (updated == null) throw new NullPointerException("Updated tracer may not be <null>.");
+                else if (updated instanceof GlobalTracer) {
+                    LOGGER.log(Level.FINE, "Attempted to update the GlobalTracer with itself.");
+                    return;
+                }
+            } while (!INSTANCE.globalTracer.compareAndSet(current, updated)); // 'while' handles race condition.
+            LOGGER.log(Level.INFO, "Updated GlobalTracer {0} (previously {1}).", new Object[]{updated, current});
+        }
     }
 
     @Override

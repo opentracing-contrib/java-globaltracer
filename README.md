@@ -7,7 +7,7 @@ Global Tracer forwarding to another Tracer implementation.
 Provides the `GlobalTracer.get()` method that returns the singleton _global tracer_.  
 
 When the tracer is needed it is lazily looked up using the following rules:
- 1. The tracer from the last `register(tracer)` call always takes precedence.</li>
+ 1. The tracer from the last `register(tracer)` or `update(tracer -> tracer)` call always takes precedence.</li>
  2. If no tracer was registered, one is looked up from the `ServiceLoader`.  
     The GlobalTracer will not attempt to choose between implementations:
  3. If no single implementation is found, the `NoopTracer` will be used.
@@ -33,6 +33,16 @@ Once initialized, all application code can instrument tracing by starting new sp
 
 If no GlobalTracer is configured, this code will not throw any exceptions.
 Tracing is simply delegated to the `NoopTracer` instead.
+
+### Updating the registered Tracer
+To register a new tracer, based on the current registered tracer, use the `GlobalTracer.update` method:
+```java
+    GlobalTracer.update(tracer -> new WrappingTracer(tracer));
+```
+
+This creates a wrapper around the actual underlying `Tracer` implementation.  
+A wrapper around `GlobalTracer` itself should not be registered as that will result in an infinite recursive cycle
+when accessed.
 
 ### Automatic Span propagation
 This library _does not_ manage any span propagation.  
