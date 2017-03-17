@@ -23,6 +23,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static io.opentracing.contrib.global.GlobalTracerTest.sleepRandom;
+
 /**
  * A 'trivial' wrapping tracer that delegates all calls as-is.
  */
@@ -33,13 +35,9 @@ final class TrivialWrappingTracer implements Tracer {
     static final GlobalTracer.UpdateFunction WRAP = new GlobalTracer.UpdateFunction() {
         @Override
         public Tracer apply(Tracer current) {
-            try {
-                Tracer newWrapper = new TrivialWrappingTracer(current);
-                Thread.sleep(100);
-                return newWrapper;
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e.getMessage(), e);
-            }
+            Tracer newWrapper = new TrivialWrappingTracer(current);
+            sleepRandom(100);
+            return newWrapper;
         }
     };
 

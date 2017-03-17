@@ -22,6 +22,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -198,4 +199,14 @@ public class GlobalTracerTest {
         return count;
     }
 
+    private static final Random RND = new Random();
+
+    static void sleepRandom(int maxmillis) {
+        try {
+            Thread.sleep(RND.nextInt(maxmillis));
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(ie.getMessage(), ie);
+        }
+    }
 }
