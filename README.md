@@ -1,7 +1,10 @@
 [![Build Status][ci-img]][ci] [![Released Version][maven-img]][maven]
 
 # Global tracer resolution for Java
-Global Tracer forwarding to another Tracer implementation.
+Global Tracer forwarding to another Tracer implementation.  
+**Note:** A simplified version of the `GlobalTracer` may become integrated into
+[opentracing-java](https://github.com/opentracing/opentracing-java), see
+[PR #109](https://github.com/opentracing/opentracing-java/pull/109)
 
 ## GlobalTracer
 Provides the `GlobalTracer.get()` method that returns the singleton _global tracer_.  
