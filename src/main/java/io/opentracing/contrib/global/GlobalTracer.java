@@ -20,7 +20,8 @@ import io.opentracing.propagation.Format;
 
 import java.util.Iterator;
 import java.util.ServiceLoader;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,7 +34,8 @@ import java.util.logging.Logger;
  * <p>
  * When the tracer is needed it is lazily looked up using the following rules:
  * <ol type="a">
- * <li>The last-{@link #register(Tracer) registered} tracer always takes precedence.</li>
+ * <li>The last {@link #register(Tracer) registered} or {@link #update(UpdateFunction) updated} tracer
+ * always takes precedence.</li>
  * <li>If no tracer was registered, one is looked up from the {@link ServiceLoader}.<br>
  * The {@linkplain GlobalTracer} will not attempt to choose between implementations:</li>
  * <li>If no single tracer service is found, the {@link io.opentracing.NoopTracer NoopTracer} will be used.</li>
@@ -41,6 +43,27 @@ import java.util.logging.Logger;
  */
 public final class GlobalTracer implements Tracer {
     private static final Logger LOGGER = Logger.getLogger(GlobalTracer.class.getName());
+
+    /**
+     * Function to update the global tracer.
+     * <p>
+     * In Java 8 terms, this would be a {@code Function<Tracer, Tracer>}.
+     *
+     * @see GlobalTracer#update(UpdateFunction)
+     */
+    public interface UpdateFunction {
+        /**
+         * Update the registered global {@link Tracer} instance.
+         * <p>
+         * This allows updating the {@linkplain GlobalTracer} with a {@linkplain Tracer}
+         * that is 'based on' the current registered tracer, allowing delegation or wrapping
+         * tracers to be registered independently from underlying implementations.
+         *
+         * @param current The current GlobalTracer implementation (never <code>null</code>).
+         * @return The tracer to become the new GlobalTracer implementation, must be non-null.
+         */
+        Tracer apply(Tracer current);
+    }
 
     /**
      * Singleton instance.
@@ -58,23 +81,27 @@ public final class GlobalTracer implements Tracer {
      * This can be either an {@link #register(Tracer) explicitly registered} or
      * the {@link #loadSingleSpiImplementation() automatically resolved} Tracer
      * (or <code>null</code> during initialization).
+     * <p>
+     * Access regulated by {@link #LOCK}.
      */
-    private final AtomicReference<Tracer> globalTracer = new AtomicReference<Tracer>();
+    private static volatile Tracer globalTracer = null;
+    private static final Lock LOCK = new ReentrantLock();
 
     private GlobalTracer() {
     }
 
-    private Tracer lazyTracer() {
-        Tracer tracer = globalTracer.get();
-        if (tracer == null) {
-            final Tracer resolved = loadSingleSpiImplementation();
-            while (tracer == null && resolved != null) { // handle rare race condition
-                globalTracer.compareAndSet(null, resolved);
-                tracer = globalTracer.get();
+    // lazily loading of the globalTracer
+    private static Tracer lazyTracer() {
+        if (globalTracer == null) {
+            LOCK.lock();
+            try {
+                if (globalTracer == null) globalTracer = loadSingleSpiImplementation();
+            } finally {
+                LOCK.unlock();
             }
-            LOGGER.log(Level.INFO, "Using GlobalTracer: {0}.", tracer);
+            LOGGER.log(Level.INFO, "Using GlobalTracer: {0}.", globalTracer);
         }
-        return tracer;
+        return globalTracer;
     }
 
     /**
@@ -105,11 +132,35 @@ public final class GlobalTracer implements Tracer {
     public static Tracer register(final Tracer tracer) {
         if (tracer instanceof GlobalTracer) {
             LOGGER.log(Level.FINE, "Attempted to register the GlobalTracer as delegate of itself.");
-            return INSTANCE.globalTracer.get(); // no-op, return 'previous' tracer.
+            return globalTracer; // no-op, return 'previous' tracer.
         }
-        Tracer previous = INSTANCE.globalTracer.getAndSet(tracer);
+        Tracer previous;
+        LOCK.lock();
+        try {
+            previous = globalTracer;
+            globalTracer = tracer;
+        } finally {
+            LOCK.unlock();
+        }
         LOGGER.log(Level.INFO, "Registered GlobalTracer {0} (previously {1}).", new Object[]{tracer, previous});
         return previous;
+    }
+
+    /**
+     * Updates the global tracer using the specified {@link UpdateFunction}.
+     *
+     * @param updateFunction The function to update the globaltracer with.
+     */
+    public static void update(UpdateFunction updateFunction) {
+        if (updateFunction != null) {
+            LOCK.lock();
+            try {
+                Tracer updated = updateFunction.apply(lazyTracer());
+                register(requireNonNull(updated, "Updated tracer may not be <null>."));
+            } finally {
+                LOCK.unlock();
+            }
+        }
     }
 
     @Override
@@ -145,6 +196,12 @@ public final class GlobalTracer implements Tracer {
                     "Falling back to NoopTracer implementation.");
         }
         return NoopTracerFactory.create();
+    }
+
+    // Similar to java 7 Objects.requireNonNull
+    private static <T> T requireNonNull(T value, String message) {
+        if (value == null) throw new NullPointerException(message);
+        return value;
     }
 
 }

@@ -21,6 +21,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.List;
+import java.util.Random;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.Matchers.anyString;
@@ -151,10 +154,59 @@ public class GlobalTracerTest {
         }
     }
 
+    @Test
+    public void testUpdate_ConcurrentThreads() throws InterruptedException {
+        // Preparation
+        final Tracer baseTracer = mock(Tracer.class);
+        GlobalTracer.register(baseTracer);
+        TrivialWrappingTracer.SEQUENCER.set(0);
+
+        // Define Threads updating the Tracing with a wrapper.
+        final int threadCount = 10;
+        Thread[] threads = new Thread[threadCount];
+        for (int i = 0; i < threadCount; i++) {
+            threads[i] = new Thread() {
+                @Override
+                public void run() {
+                    GlobalTracer.update(TrivialWrappingTracer.WRAP);
+                }
+            };
+        }
+
+        // Start threads & wait for completion
+        for (int i = 0; i < threadCount; i++) threads[i].start();
+        for (int i = 0; i < threadCount; i++) threads[i].join(1000);
+
+        // Assertions about the result of the parallel wrapping functions:
+        Tracer current = GlobalTracer.register(GlobalTracer.get());
+        assertThat("Current tracer", current, is(instanceOf(TrivialWrappingTracer.class)));
+        List<Tracer> flatTracers = ((TrivialWrappingTracer) current).flatten();
+        assertThat(threadCount + " wrappers + 1 base tracer", flatTracers, hasSize(threadCount + 1));
+        assertThat(flatTracers.get(0), is(current));
+        assertThat(flatTracers.get(threadCount), is(baseTracer));
+        int wrapperNr = ((TrivialWrappingTracer) current).nr;
+        for (int i = 1; i < threadCount; i++) {
+            assertThat("tracer " + i, flatTracers.get(i), is(instanceOf(TrivialWrappingTracer.class)));
+            TrivialWrappingTracer tracer = (TrivialWrappingTracer) flatTracers.get(i);
+            assertThat("descending wrapper number", tracer.nr, is(lessThan(wrapperNr)));
+            wrapperNr = tracer.nr;
+        }
+    }
+
     private static int identityCount(Tracer needle, Tracer... haystack) {
         int count = 0;
         for (Tracer t : haystack) if (t == needle) count++;
         return count;
     }
 
+    private static final Random RND = new Random();
+
+    static void sleepRandom(int maxmillis) {
+        try {
+            Thread.sleep(RND.nextInt(maxmillis));
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(ie.getMessage(), ie);
+        }
+    }
 }
