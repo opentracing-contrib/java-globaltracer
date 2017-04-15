@@ -29,6 +29,7 @@ import static org.hamcrest.Matchers.*;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("deprecation") // Test is for a deprecated class.
 public class GlobalTracerTest {
 
     @Before
@@ -37,8 +38,8 @@ public class GlobalTracerTest {
         Field tracerFld = io.opentracing.util.GlobalTracer.class.getDeclaredField("tracer");
         Field singleInit = GlobalTracer.class.getDeclaredField("SINGLE_INIT");
         synchronized (tracerFld) {
-            tracerFld.setAccessible(true);
             singleInit.setAccessible(true);
+            tracerFld.setAccessible(true);
             try {
                 tracerFld.set(null, NoopTracerFactory.create());
                 ((AtomicBoolean) singleInit.get(null)).set(false);
@@ -98,17 +99,6 @@ public class GlobalTracerTest {
         verify(t1).buildSpan(eq("first operation"));
         verify(t1).buildSpan(eq("second operation"));
         verifyNoMoreInteractions(t1);
-    }
-
-    /**
-     * Registering the GlobalTracer as its own delegate should be a no-op.
-     */
-    @Test
-    public void testRegister_GlobalTracerAsItsOwnDelegate() {
-        Tracer result1 = GlobalTracer.register(GlobalTracer.get());
-        Tracer result2 = GlobalTracer.register(GlobalTracer.get());
-        assertThat(result1, is(instanceOf(MockTracer.class))); // get() triggered lazy init
-        assertThat(result2, is(sameInstance(result2)));
     }
 
 }

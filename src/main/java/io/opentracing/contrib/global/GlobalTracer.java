@@ -17,7 +17,6 @@ import io.opentracing.NoopTracer;
 import io.opentracing.NoopTracerFactory;
 import io.opentracing.Tracer;
 
-import java.lang.reflect.Field;
 import java.util.Iterator;
 import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -33,7 +32,7 @@ import java.util.logging.Logger;
  * <p>
  * When the tracer is needed it is lazily looked up using the following rules:
  * <ol type="a">
- * <li>The last-{@link #register(Tracer) registered} tracer always takes precedence.</li>
+ * <li>The {@link #register(Tracer) registered} tracer always takes precedence.</li>
  * <li>If no tracer was registered, one is looked up from the {@link ServiceLoader}.<br>
  * The {@linkplain GlobalTracer} will not attempt to choose between implementations:</li>
  * <li>If no single tracer service is found, the {@link io.opentracing.NoopTracer NoopTracer} will be used.</li>
@@ -51,10 +50,15 @@ public final class GlobalTracer {
     }
 
     private static void lazyInit() {
-        if (SINGLE_INIT.compareAndSet(false, true) && tryReflectCurrent() instanceof NoopTracer) {
+        if (SINGLE_INIT.compareAndSet(false, true)) {
             final Tracer resolved = loadSingleSpiImplementation();
             if (!(resolved instanceof NoopTracer)) {
-                io.opentracing.util.GlobalTracer.register(resolved);
+                try {
+                    io.opentracing.util.GlobalTracer.register(resolved);
+                } catch (RuntimeException alreadyRegistered) {
+                    LOGGER.log(Level.WARNING, "Could not automatically register " + resolved + " because: "
+                            + alreadyRegistered.getMessage(), alreadyRegistered);
+                }
             }
             LOGGER.log(Level.INFO, "Using GlobalTracer: {0}.", resolved);
         }
@@ -79,37 +83,19 @@ public final class GlobalTracer {
         return io.opentracing.util.GlobalTracer.get();
     }
 
-    private static Tracer tryReflectCurrent() {
-        Tracer current = null;
-        try {
-            Field tracerFld = io.opentracing.util.GlobalTracer.class.getDeclaredField("tracer");
-            synchronized (tracerFld) {
-                tracerFld.setAccessible(true);
-                try {
-                    current = (Tracer) tracerFld.get(null);
-                } finally {
-                    tracerFld.setAccessible(false);
-                }
-            }
-        } catch (Exception reflectionError) {
-
-        }
-        return current;
-    }
-
     /**
      * Explicitly configures a {@link Tracer} to back the behaviour of the {@link #get() global tracer}.
      * <p>
-     * The previous global tracer is returned so it can be restored later if necessary.
+     * <strong>note:</strong> The previous global tracer is not returned anymore
+     * because the GlobalTracer can only be registered once, therefore can no longer be restored to its previous value.
      *
      * @param tracer Tracer to use as global tracer.
-     * @return The previous global tracer or <code>null</code> if there was none.
+     * @return Always <code>null</code>.
      */
     public static Tracer register(final Tracer tracer) {
-        final Tracer previous = tryReflectCurrent();
         io.opentracing.util.GlobalTracer.register(tracer);
-        LOGGER.log(Level.INFO, "Registered GlobalTracer {0} (previously {1}).", new Object[]{tracer, previous});
-        return previous;
+        LOGGER.log(Level.INFO, "Registered GlobalTracer {0}.", tracer);
+        return null; // no way to return the previous instance
     }
 
     /**
