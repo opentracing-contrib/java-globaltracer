@@ -55,12 +55,12 @@ public final class GlobalTracer {
             if (!(resolved instanceof NoopTracer)) {
                 try {
                     io.opentracing.util.GlobalTracer.register(resolved);
+                    LOGGER.log(Level.INFO, "Using GlobalTracer: {0}.", resolved);
                 } catch (RuntimeException alreadyRegistered) {
                     LOGGER.log(Level.WARNING, "Could not automatically register " + resolved + " because: "
                             + alreadyRegistered.getMessage(), alreadyRegistered);
                 }
             }
-            LOGGER.log(Level.INFO, "Using GlobalTracer: {0}.", resolved);
         }
     }
 
