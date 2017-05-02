@@ -4,7 +4,9 @@
 Global Tracer forwarding to another Tracer implementation.  
 **Note:** A simplified version of the `GlobalTracer` ~~may become~~ was integrated into
 [opentracing-java](https://github.com/opentracing/opentracing-java) in version 0.21.0.
-This contrib project will be deprecated soon.
+This contrib project ~~will be deprecated soon~~ is now deprecated as of version `0.1.1`.  
+The `ServiceLoader` functionality has been transferred to the 
+[TracerResolver](https://github.com/opentracing-contrib/java-tracerresolver) contrib project.
 
 ## GlobalTracer
 Provides the `GlobalTracer.get()` method that returns the singleton _global tracer_.  
