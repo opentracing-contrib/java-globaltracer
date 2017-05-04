@@ -2,20 +2,18 @@
 
 # Global tracer resolution for Java
 Global Tracer forwarding to another Tracer implementation.  
-**Note:** A simplified version of the `GlobalTracer` ~~may become~~ was integrated into
-[opentracing-java](https://github.com/opentracing/opentracing-java) in version 0.21.0.
+**Note:** A simplified version of the `GlobalTracer` ~~may become~~ was 
+integrated into [opentracing-java] in version 0.21.0.
 This contrib project ~~will be deprecated soon~~ is now deprecated as of version `0.1.1`.  
-The `ServiceLoader` functionality has been transferred to the 
-[TracerResolver](https://github.com/opentracing-contrib/java-tracerresolver) contrib project.
+The `ServiceLoader` functionality has been transferred to the [TracerResolver] contrib project.
 
 ## GlobalTracer
 Provides the `GlobalTracer.get()` method that returns the singleton _global tracer_.  
 
 When the tracer is needed it is lazily looked up using the following rules:
  1. The tracer from the last `register(tracer)` call always takes precedence.</li>
- 2. If no tracer was registered, one is looked up from the `ServiceLoader`.  
-    The GlobalTracer will not attempt to choose between implementations:
- 3. If no single implementation is found, the `NoopTracer` will be used.
+ 2. If no tracer was registered, one is resolved by the [TracerResolver].  
+ 3. If no Tracer is resolved, the `NoopTracer` will be used.
 
 ## How to use this library
 Some examples on how this library can be used:
@@ -48,3 +46,5 @@ if you want to implicitly manage and access the active span in your application.
   [ci]: https://travis-ci.org/opentracing-contrib/java-globaltracer
   [maven-img]: https://img.shields.io/maven-central/v/io.opentracing.contrib/opentracing-globaltracer.svg
   [maven]: http://search.maven.org/#search%7Cga%7C1%7Copentracing-globaltracer
+  [opentracing-java]: https://github.com/opentracing/opentracing-java
+  [tracerresolver]: https://github.com/opentracing-contrib/java-tracerresolver
