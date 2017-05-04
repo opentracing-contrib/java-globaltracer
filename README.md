@@ -1,11 +1,12 @@
 [![Build Status][ci-img]][ci] [![Released Version][maven-img]][maven]
 
-# Global tracer resolution for Java
-Global Tracer forwarding to another Tracer implementation.  
-**Note:** A simplified version of the `GlobalTracer` ~~may become~~ was 
-integrated into [opentracing-java] in version 0.21.0.
-This contrib project ~~will be deprecated soon~~ is now deprecated as of version `0.1.1`.  
-The `ServiceLoader` functionality has been transferred to the [TracerResolver] contrib project.
+# _:exclamation: deprecated :exclamation:_ Global tracer resolution for Java
+
+Global Tracer forwarding to another Tracer implementation.
+
+**:exclamation:Note:** `GlobalTracer` has been included in core 
+OpenTracing Java since [opentracing-java] version `0.21.0`.  
+**_This contrib project is now deprecated._**
 
 ## GlobalTracer
 Provides the `GlobalTracer.get()` method that returns the singleton _global tracer_.  
@@ -36,11 +37,6 @@ Once initialized, all application code can instrument tracing by starting new sp
 
 If no GlobalTracer is configured, this code will not throw any exceptions.
 Tracing is simply delegated to the `NoopTracer` instead.
-
-### Automatic Span propagation
-This library _does not_ manage any span propagation.  
-Consider combining this library with the [SpanManager library](https://github.com/opentracing-contrib/java-spanmanager)
-if you want to implicitly manage and access the active span in your application.
 
   [ci-img]: https://img.shields.io/travis/opentracing-contrib/java-globaltracer/master.svg
   [ci]: https://travis-ci.org/opentracing-contrib/java-globaltracer
