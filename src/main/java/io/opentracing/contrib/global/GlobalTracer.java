@@ -47,7 +47,7 @@ public final class GlobalTracer {
     }
 
     private static void lazyInit() {
-        if (SINGLE_INIT.compareAndSet(false, true)) {
+        if (SINGLE_INIT.compareAndSet(false, true) && !io.opentracing.util.GlobalTracer.isRegistered()) {
             try {
                 final Tracer resolved = TracerResolver.resolveTracer();
                 if (resolved != null && !(resolved instanceof NoopTracer)) {
