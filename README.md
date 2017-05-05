@@ -13,8 +13,8 @@ Provides the `GlobalTracer.get()` method that returns the singleton _global trac
 
 When the tracer is needed it is lazily looked up using the following rules:
  1. The tracer from the last `register(tracer)` call always takes precedence.</li>
- 2. If no tracer was registered, one resolved by the [TracerResolver].
- 3. If no single implementation is found, the `NoopTracer` will be used.
+ 2. If no tracer was registered, one is resolved by the [TracerResolver].  
+ 3. If no Tracer is resolved, the `NoopTracer` will be used.
 
 ## How to use this library
 Some examples on how this library can be used:

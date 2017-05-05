@@ -14,11 +14,9 @@
 package io.opentracing.contrib.global;
 
 import io.opentracing.NoopTracer;
-import io.opentracing.NoopTracerFactory;
 import io.opentracing.Tracer;
+import io.opentracing.contrib.tracerresolver.TracerResolver;
 
-import java.util.Iterator;
-import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,14 +25,13 @@ import java.util.logging.Logger;
  * Forwards all methods to another tracer that can be configured in one of two ways:
  * <ol>
  * <li>Explicitly, calling {@link #register(Tracer)} with a configured tracer, or:</li>
- * <li>Automatically using the Java {@link ServiceLoader} SPI mechanism to load a {@link Tracer} from the classpath.</li>
+ * <li>Automatically using the {@link TracerResolver} to load a {@link Tracer} from the classpath.</li>
  * </ol>
  * <p>
  * When the tracer is needed it is lazily looked up using the following rules:
  * <ol type="a">
  * <li>The {@link #register(Tracer) registered} tracer always takes precedence.</li>
- * <li>If no tracer was registered, one is looked up from the {@link ServiceLoader}.<br>
- * The {@linkplain GlobalTracer} will not attempt to choose between implementations:</li>
+ * <li>If no tracer was registered, it is resolved by the {@link TracerResolver}.</li>
  * <li>If no single tracer service is found, the {@link io.opentracing.NoopTracer NoopTracer} will be used.</li>
  * </ol>
  *
@@ -50,16 +47,15 @@ public final class GlobalTracer {
     }
 
     private static void lazyInit() {
-        if (SINGLE_INIT.compareAndSet(false, true)) {
-            final Tracer resolved = loadSingleSpiImplementation();
-            if (!(resolved instanceof NoopTracer)) {
-                try {
+        if (SINGLE_INIT.compareAndSet(false, true) && !io.opentracing.util.GlobalTracer.isRegistered()) {
+            try {
+                final Tracer resolved = TracerResolver.resolveTracer();
+                if (resolved != null && !(resolved instanceof NoopTracer)) {
                     io.opentracing.util.GlobalTracer.register(resolved);
                     LOGGER.log(Level.INFO, "Using GlobalTracer: {0}.", resolved);
-                } catch (RuntimeException alreadyRegistered) {
-                    LOGGER.log(Level.WARNING, "Could not automatically register " + resolved + " because: "
-                            + alreadyRegistered.getMessage(), alreadyRegistered);
                 }
+            } catch (RuntimeException rte) {
+                LOGGER.log(Level.WARNING, "Exception resolving and registering the GlobalTracer: " + rte.getMessage(), rte);
             }
         }
     }
@@ -68,11 +64,8 @@ public final class GlobalTracer {
      * Returns the constant {@linkplain GlobalTracer}.
      * <p>
      * All methods are forwarded to the currently configured tracer.<br>
-     * Until a tracer is {@link #register(Tracer) explicitly configured},
-     * one is looked up from the {@link ServiceLoader},
-     * falling back to the {@link io.opentracing.NoopTracer NoopTracer}.<br>
-     * A tracer can be re-configured at any time.
-     * For example, the tracer used to extract a span may be different than the one that injects it.
+     * Unless a tracer is {@link #register(Tracer) explicitly configured},
+     * one is resolved by the {@link TracerResolver}.<br>
      *
      * @return The global tracer constant.
      * @see io.opentracing.util.GlobalTracer#get()
@@ -96,26 +89,6 @@ public final class GlobalTracer {
         io.opentracing.util.GlobalTracer.register(tracer);
         LOGGER.log(Level.INFO, "Registered GlobalTracer {0}.", tracer);
         return null; // no way to return the previous instance
-    }
-
-    /**
-     * Loads a single service implementation from {@link ServiceLoader}.
-     *
-     * @return The single service or a NoopTracer.
-     */
-    private static Tracer loadSingleSpiImplementation() {
-        // Use the ServiceLoader to find the declared Tracer implementation.
-        Iterator<Tracer> spiImplementations =
-                ServiceLoader.load(Tracer.class, Tracer.class.getClassLoader()).iterator();
-        if (spiImplementations.hasNext()) {
-            Tracer foundImplementation = spiImplementations.next();
-            if (!spiImplementations.hasNext()) {
-                return foundImplementation;
-            }
-            LOGGER.log(Level.WARNING, "More than one Tracer service found. " +
-                    "Falling back to NoopTracer implementation.");
-        }
-        return NoopTracerFactory.create();
     }
 
 }
