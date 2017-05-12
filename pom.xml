@@ -21,7 +21,7 @@
     <!-- Artifact identification -->
     <groupId>io.opentracing.contrib</groupId>
     <artifactId>opentracing-globaltracer</artifactId>
-    <version>0.1.2-SNAPSHOT</version>
+    <version>0.1.2</version>
     <packaging>jar</packaging>
 
     <!-- Project information -->
@@ -71,7 +71,7 @@
         <url>https://github.com/opentracing-contrib/java-globaltracer</url>
         <connection>scm:git:https://github.com/opentracing-contrib/java-globaltracer.git</connection>
         <developerConnection>scm:git:https://github.com/opentracing-contrib/java-globaltracer.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>0.1.2</tag>
     </scm>
 
     <issueManagement>
